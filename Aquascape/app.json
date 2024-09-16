@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "AquaEscape",
-    "slug": "AquaEscape",
+    "name": "Aquascape",
+    "slug": "Aquascape",
     "version": "1.0.0",
     "entryPoint": "./App.js", 
     "orientation": "portrait",
