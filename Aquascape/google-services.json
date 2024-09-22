@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "281590937935",
+    "project_id": "aquascape-ad068",
+    "storage_bucket": "aquascape-ad068.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:281590937935:android:0def8941a9da9f555d6d3a",
+        "android_client_info": {
+          "package_name": "com.aqua.aquascape"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBp3Ju-ABkWPtAwXMYRNYo9l4OBDVzKPJo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
