@@ -3,7 +3,8 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert } from 'reac
 import Elements from '../../constants/Elements'; // Import the reusable component styles
 import Colors from '../../constants/Colors';
 
-import { auth, createUserWithEmailAndPassword } from '@react-native-firebase/auth';
+import { auth, firestoreDB } from "../../firebase/firebase";
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 const SignupScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -16,9 +17,10 @@ const SignupScreen = ({ navigation }) => {
 
       } else {
         try {
-            const credentials = await auth().createUserWithEmailAndPassword(
-                email,
-                password
+            const credentials = createUserWithEmailAndPassword(
+              auth,  
+              email,
+              password
             );
 
             if (credentials.user) {
@@ -26,6 +28,7 @@ const SignupScreen = ({ navigation }) => {
             }
         } catch (e) {
             Alert.alert("Opps", "Please try again")
+            console.log(e);
         }
       }
   };
