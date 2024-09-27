@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, Text, View, TextInput, Keyboard,
+import { StyleSheet, Text, View, TextInput, Keyboard, Image, Dimensions,
   TouchableOpacity, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback 
 } from 'react-native';
 import Elements from '../../../constants/Elements';
@@ -7,6 +7,10 @@ import Colors from '../../../constants/Colors';
 
 import { auth } from '../../../firebase/firebase';
 import { signOut } from "firebase/auth";
+
+const giftImage = require('../../../assets/Fisherman.gif');
+
+const screenWidth = Dimensions.get('window').width;
 
 const SettingsScreen = ({ navigation }) => {
   const [uid, setUid] = useState(null);
@@ -29,7 +33,10 @@ const SettingsScreen = ({ navigation }) => {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
-      
+        
+        {/* Testing fisherman animation */}
+        <Image source={giftImage} style={styles.giftImage} />
+
         {/* Title */}
         <Text style={Elements.title}>Aquascape</Text>
 
@@ -75,5 +82,11 @@ const styles = StyleSheet.create({
     bottom: 70, // Adjust this value to move buttons higher or lower
     width: '100%',
     alignItems: 'center',
+  },
+
+  giftImage: {
+    width: screenWidth * 0.8,
+    height: screenWidth * 0.8,
+    marginVertical: 20,
   },
 });
