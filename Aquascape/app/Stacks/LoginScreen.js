@@ -1,21 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, Keyboard,
   TouchableOpacity, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback 
 } from 'react-native';
-import Elements from '../../constants/Elements'; // Import the reusable component styles
+import Elements from '../../constants/Elements';
 import Colors from '../../constants/Colors';
+
+import { auth } from "../../firebase/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        navigation.replace("HomeTabs");
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
   const handleLogin = () => {
-    console.log('Email:', email, 'Password:', password);
-    navigation.navigate('HomeTabs');
+    signInWithEmailAndPassword(auth, email, password).catch((error) =>
+      alert(error.message)
+    );
   };
 
   const handleSignup = () => {
-    navigation.navigate('Signup');
+    navigation.replace('Signup');
   };
 
   return (

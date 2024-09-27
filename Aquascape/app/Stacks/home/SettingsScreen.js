@@ -1,10 +1,79 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useState, useEffect } from "react";
+import { StyleSheet, Text, View, TextInput, Keyboard,
+  TouchableOpacity, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback 
+} from 'react-native';
+import Elements from '../../../constants/Elements';
+import Colors from '../../../constants/Colors';
 
-export default function SettingsScreen() {
+import { auth } from '../../../firebase/firebase';
+import { signOut } from "firebase/auth";
+
+const SettingsScreen = ({ navigation }) => {
+  const [uid, setUid] = useState(null);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      setUid(user.uid);  
+    }
+  }, []);
+
+  const handleLogout = () => {
+    signOut(auth)
+      .then(() => {
+        navigation.replace("Login");
+      })
+      .catch((error) => alert(error.message));
+  };
+
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>SettingsScreen</Text>
-    </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+      
+        {/* Title */}
+        <Text style={Elements.title}>Aquascape</Text>
+
+        <Text>User UID: {uid ? uid : 'No user logged in'}</Text>
+        
+        <View style={styles.buttonContainer}>
+
+          {/* Secondary Button */}
+          <TouchableOpacity style={[Elements.secondaryButton, styles.button]} onPress={handleLogout}>
+            <Text style={Elements.secondaryButtonText}>Log Out</Text>
+          </TouchableOpacity>
+            
+
+        </View>
+
+        
+
+        
+      </View>
+    </TouchableWithoutFeedback>
   );
-}
+};
+
+export default SettingsScreen;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+  },
+
+  button: {
+    width: '70%',
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+
+  buttonContainer: {
+    position: 'absolute',
+    bottom: 70, // Adjust this value to move buttons higher or lower
+    width: '100%',
+    alignItems: 'center',
+  },
+});
