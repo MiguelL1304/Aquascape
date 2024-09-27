@@ -1,14 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert } from 'react-native';
 import Elements from '../../constants/Elements'; // Import the reusable component styles
 import Colors from '../../constants/Colors';
 
 import { auth, firestoreDB } from "../../firebase/firebase";
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { collection, addDoc, doc, setDoc } from 'firebase/firestore';
 
 const SignupScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+
+  useEffect(() => {
+    const handleUserStateChange = async (user) => {
+      if (user) {
+        try {
+          const uid = user.uid; // Use the `user` object provided by Firebase
+  
+          const userProfileRef = doc(firestoreDB, "profile", uid);
+          await setDoc(userProfileRef, {
+            email: user.email, // Use `user.email` from the Firebase `user` object
+            firstName: firstName,
+            lastName: lastName,
+            createdAt: new Date(),
+          });
+  
+          signOut(auth)
+            .then(() => navigation.replace("Login"))
+        } catch (error) {
+          console.error("Error saving user profile: ", error);
+          Alert.alert("Error", "An error occurred while saving the user profile.");
+        }
+      }
+    };
+  
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      handleUserStateChange(user); // Call the async function inside the listener
+    });
+  
+    return () => unsubscribe(); // Clean up the subscription
+  }, [])
 
   const handleSignup = async () => {
     if (email === '' || password === '') {
@@ -17,15 +51,13 @@ const SignupScreen = ({ navigation }) => {
 
       } else {
         try {
-            const credentials = createUserWithEmailAndPassword(
-              auth,  
-              email,
-              password
-            );
-
-            if (credentials.user) {
-                navigation.navigate('HomeTabs');
-            }
+          const credentials = createUserWithEmailAndPassword(
+            auth,  
+            email,
+            password
+          );
+            
+           Alert.alert("Account Created", "Please sign in with your new credentials.");
         } catch (e) {
             Alert.alert("Opps", "Please try again")
             console.log(e);
