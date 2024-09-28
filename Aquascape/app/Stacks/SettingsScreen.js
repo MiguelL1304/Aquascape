@@ -2,17 +2,17 @@ import React, { useState, useEffect } from "react";
 import { StyleSheet, Text, View, TextInput, Keyboard, Image, Dimensions,
   TouchableOpacity, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback 
 } from 'react-native';
-import Elements from '../../../constants/Elements';
-import Colors from '../../../constants/Colors';
+import Elements from '../../constants/Elements';
+import Colors from '../../constants/Colors';
 
-import { auth } from '../../../firebase/firebase';
+import { auth } from '../../firebase/firebase';
 import { signOut } from "firebase/auth";
 
-const giftImage = require('../../../assets/Fisherman.gif');
+const giftImage = require('../../assets/Fisherman.gif');
 
 const screenWidth = Dimensions.get('window').width;
 
-const SettingsScreen = ({ navigation }) => {
+const SettingsScreen = () => {
   const [uid, setUid] = useState(null);
 
   useEffect(() => {
