@@ -1,10 +1,13 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 
-export default function StatsScreen() {
+const TasksScreen = ({ navigation }) => {
+
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>AnalyticsScreen</Text>
+      <Text>TasksScreen</Text>
     </View>
   );
-}
+};
+
+export default TasksScreen;

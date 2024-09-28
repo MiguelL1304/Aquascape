@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text } from 'react-native';
 import { auth } from '../../../firebase/firebase';
 
-export default function HomeScreen() {
+const AquariumScreen = ({ navigation }) => {
   const [uid, setUid] = useState(null);
 
   useEffect(() => {
@@ -19,4 +19,6 @@ export default function HomeScreen() {
       
     </View>
   );
-}
+};
+
+export default AquariumScreen;
