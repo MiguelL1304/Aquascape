@@ -24,7 +24,7 @@ export default function HomeTabs({ navigation }) {
 
           return <Icon name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#e74c3',
+        tabBarActiveTintColor: '#e74c3c',
         tabBarInactiveTintColor: 'gray',
         tabBarShowLabel: false,
         headerTransparent: true,
