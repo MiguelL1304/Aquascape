@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, StyleSheet, TextInput } from 'react-native';
+import { View, Text, Button, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { Circle } from 'react-native-progress';
 
 const TimerScreen = () => {
-  const [secondsLeft, setSecondsLeft] = useState(1500);
+  const [secondsLeft, setSecondsLeft] = useState(1500); // Default to 25 minutes (1500 seconds)
   const [isActive, setIsActive] = useState(false);
   const [customTime, setCustomTime] = useState('25'); // default set to 25 mins
 
@@ -39,20 +39,23 @@ const TimerScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Circle
-        size={200}
-        progress={1 - percentage / 100} // progress has to be between 0 and 1
-        showsText={false}
-        thickness={20}
-        color="#FFF"
-        borderWidth={0}
-        unfilledColor="rgba(255, 255, 255, 0.3)"
-      />
+      <View style={styles.circleWrapper}>
+        <Circle
+          size={250}
+          progress={1 - percentage / 100} // progress has to be between 0 and 1
+          showsText={false}
+          thickness={20}
+          color="#FFF"
+          borderWidth={0}
+          unfilledColor="rgba(255, 255, 255, 0.3)"
+        />
 
-      <View style={styles.timerTextContainer}>
-        <Text style={styles.timerText}>
-          {minutes}:{seconds < 10 ? `0${seconds}` : seconds}
-        </Text>
+        {/* Timer or Set Timer Input centered in the circle */}
+        <View style={styles.timerTextContainer}>
+          <Text style={styles.timerText}>
+            {minutes}:{seconds < 10 ? `0${seconds}` : seconds}
+          </Text>
+        </View>
       </View>
 
       {!isActive && (
@@ -69,8 +72,12 @@ const TimerScreen = () => {
       )}
 
       <View style={styles.buttonContainer}>
-        <Button title={isActive ? 'Pause' : 'Start'} onPress={toggleTimer} />
-        <Button title="Reset" onPress={resetTimer} />
+        <TouchableOpacity style={styles.customButton} onPress={toggleTimer}>
+          <Text style={styles.buttonText}>{isActive ? 'Pause' : 'Start'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.customButton} onPress={resetTimer}>
+          <Text style={styles.buttonText}>Reset</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -83,18 +90,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#3498db',
   },
+  circleWrapper: {
+    position: 'relative', // Allows absolute positioning of the text inside the circle
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   timerTextContainer: {
-    position: 'absolute',
+    position: 'absolute', // Centers the text within the circle
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
     justifyContent: 'center',
     alignItems: 'center',
   },
   timerText: {
-    fontSize: 40,
+    fontSize: 50, // Increased size for better visibility
     color: '#FFFFFF', 
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   inputContainer: {
     marginTop: 30,
+    alignItems: 'center',
     width: '50%',
   },
   label: {
@@ -104,7 +122,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   input: {
-    height: 40,
+    height: 50,
+    width: 100,
     borderColor: '#FFFFFF',
     borderWidth: 1,
     borderRadius: 5,
@@ -118,6 +137,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '60%',
+  },
+  customButton: {
+    backgroundColor: '#2980b9',
+    padding: 10,
+    borderRadius: 10,
+    margin: 10,
+    width: 100,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 
