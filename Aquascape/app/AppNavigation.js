@@ -10,12 +10,15 @@ import LoginScreen from './Stacks/LoginScreen';
 import SignupScreen from './Stacks/SignupScreen';
 import HomeTabs from './Stacks/home/HomeTabs';
 import SettingsScreen from './Stacks/SettingsScreen';
+import SplashScreen from './Stacks/SplashScreen';
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
 
 function DrawerNavigation() {
   return (
+
+
     <Drawer.Navigator initialRouteName="HomeTabs">
       <Drawer.Screen 
         name="HomeTabs" 
@@ -45,7 +48,15 @@ function DrawerNavigation() {
 export default function AppNavigation() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
+      <Stack.Navigator initialRouteName="SplashScreen">
+      <Stack.Screen
+          name="SplashScreen"
+          component={SplashScreen}
+          options={{ headerShown: false }}
+        />
+
+
+
         <Stack.Screen
           name="Login"
           component={LoginScreen}
