@@ -66,7 +66,7 @@ const SignupScreen = ({ navigation }) => {
   };
 
   const handleCancel = () => {
-    navigation.goBack();
+    navigation.replace("Login");
   };
 
   return (
