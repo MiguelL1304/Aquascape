@@ -3,7 +3,7 @@
     "name": "AquaEscape",
     "slug": "AquaEscape",
     "version": "1.0.0",
-    "entryPoint": "./App.js", 
+    "entryPoint": "./App.js",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -23,6 +23,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
