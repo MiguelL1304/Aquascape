@@ -12,7 +12,7 @@ const giftImage = require('../../assets/Fisherman.gif');
 
 const screenWidth = Dimensions.get('window').width;
 
-const SettingsScreen = () => {
+const SettingsScreen = ({ navigation }) => {
   const [uid, setUid] = useState(null);
 
   useEffect(() => {
