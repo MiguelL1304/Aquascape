@@ -11,6 +11,7 @@ import SignupScreen from './Stacks/SignupScreen';
 import HomeTabs from './Stacks/home/HomeTabs';
 import SettingsScreen from './Stacks/SettingsScreen';
 import SplashScreen from './Stacks/SplashScreen';
+import TestScreen from './Stacks/TestScreen';
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
@@ -55,8 +56,6 @@ export default function AppNavigation() {
           options={{ headerShown: false }}
         />
 
-
-
         <Stack.Screen
           name="Login"
           component={LoginScreen}
@@ -69,9 +68,15 @@ export default function AppNavigation() {
         />
         <Stack.Screen
           name="Drawer"
-          component={DrawerNavigation} // Wrap HomeTabs and Settings in the Drawer
+          component={DrawerNavigation}
           options={{ headerShown: false }}
         />
+
+        <Stack.Screen
+          name="Test"
+          component={TestScreen}
+          options={{ headerShown: false }}
+        />    
       </Stack.Navigator>
     </NavigationContainer>
   );

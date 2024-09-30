@@ -30,6 +30,10 @@ const SettingsScreen = ({ navigation }) => {
       .catch((error) => alert(error.message));
   };
 
+  const handleTest = () => {
+    navigation.replace("Test");
+  };
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
@@ -44,11 +48,15 @@ const SettingsScreen = ({ navigation }) => {
         
         <View style={styles.buttonContainer}>
 
-          {/* Secondary Button */}
+          {/* Main Button */}
           <TouchableOpacity style={[Elements.secondaryButton, styles.button]} onPress={handleLogout}>
             <Text style={Elements.secondaryButtonText}>Log Out</Text>
           </TouchableOpacity>
-            
+          
+          {/* Secondary Button */}
+          <TouchableOpacity style={[Elements.mainButton, styles.button]} onPress={handleTest}>
+            <Text style={Elements.mainButtonText}>Test screen</Text>
+          </TouchableOpacity>
 
         </View>
 
