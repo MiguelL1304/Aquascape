@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert, ScrollView } from 'react-native';
-import Elements from '../../constants/Elements'; // Import the reusable component styles
+import Elements from '../../constants/Elements';
 import Colors from '../../constants/Colors';
 import { CalendarList, Calendar } from 'react-native-calendars';
 import { format, addDays } from 'date-fns';
