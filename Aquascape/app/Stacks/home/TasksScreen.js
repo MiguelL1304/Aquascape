@@ -2,11 +2,56 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, Button, TouchableOpacity } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { CheckBox } from 'react-native-elements';
+import CalendarStrip from 'react-native-calendar-strip';
+
+//Styling
+import Elements from '../../../constants/Elements';
+import Colors from '../../../constants/Colors';
+import Icon from 'react-native-vector-icons/Ionicons';
+
+//Calculation of visable weeks
+const getStartOfWeek = (date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day;  // Subtract the current day to get back to Sunday
+  return new Date(d.setDate(diff));
+};
+
+const getEndOfWeek = (date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = 6 - day;  // Calculate days to Saturday
+  return new Date(d.setDate(d.getDate() + diff));
+};
+
+// Calculate min and max dates
+const getMinMaxDates = () => {
+  const currentDate = new Date();
+
+  // Calculate 2 weeks before the current day
+  const twoWeeksBefore = new Date(currentDate);
+  twoWeeksBefore.setDate(currentDate.getDate() - 14);
+  const minDate = getStartOfWeek(twoWeeksBefore);  // Start of the week for 2 weeks before
+
+  // Calculate 1 month after the current day
+  const oneMonthAfter = new Date(currentDate);
+  oneMonthAfter.setMonth(currentDate.getMonth() + 1);
+  const maxDate = getEndOfWeek(oneMonthAfter);  // End of the week for 1 month after
+
+  // Return the dates as formatted strings
+  return {
+    minDate: minDate.toISOString().split('T')[0],
+    maxDate: maxDate.toISOString().split('T')[0],
+  };
+};
 
 const TasksScreen = ({ navigation }) => {
-  const [selectedDate, setSelectedDate] = useState(null);  // State to track the selected date
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [tasks, setTasks] = useState({});  // Store tasks for different dates
   const [newTask, setNewTask] = useState('');  // Store the new task input
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const { minDate, maxDate } = getMinMaxDates();
 
   // Handler to add a task to the selected date
   const addTask = () => {
@@ -30,19 +75,51 @@ const TasksScreen = ({ navigation }) => {
     setTasks({ ...tasks, [selectedDate]: updatedTasks });
   };
 
+  // Toggle the calendar view
+  const toggleCalendarView = () => {
+    setIsExpanded(!isExpanded);
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>TasksScreen</Text>
 
-      {/* Calendar widget */}
-      <Calendar
-        minDate={'2024-08-01'}
-        maxDate={'2024-12-31'}
-        onDayPress={(day) => setSelectedDate(day.dateString)}
-        markedDates={{
-          [selectedDate]: { selected: true, selectedColor: 'blue' }
-        }}
-      />
+      {/* Conditionally Render CalendarStrip or Calendar */}
+      {isExpanded ? (
+        <Calendar
+          style={{ paddingBottom: 10, marginTop: 30 }}
+          minDate={minDate}
+          maxDate={maxDate}
+          onDayPress={(day) => setSelectedDate(day.dateString)}
+          markedDates={{
+            [selectedDate]: { selected: true, selectedColor: Colors.primary }
+          }}
+        />
+      ) : (
+        <CalendarStrip
+          style={{ height: 100, paddingTop: 20, paddingBottom: 10 }}
+          selectedDate={selectedDate}
+          onDateSelected={(date) => setSelectedDate(new Date(date).toISOString().split('T')[0])}  // Format selected date correctly
+          scrollable
+          minDate={minDate}
+          maxDate={maxDate}
+          markedDates={[
+            {
+              date: selectedDate,
+              dots: [{ color: Colors.primary, selectedColor: Colors.primary }],
+            },
+          ]}
+          daySelectionAnimation={{
+            type: 'background',
+            duration: 200,
+            highlightColor: Colors.primary,
+          }}
+        />
+      )}
+
+      {/* Toggle Button to Expand/Collapse Calendar */}
+      <TouchableOpacity onPress={toggleCalendarView} style={styles.toggleButton}>
+        <Icon name={isExpanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={24} />
+      </TouchableOpacity>  
 
       {/* Display to-do list when a date is selected */}
       {selectedDate && (
@@ -57,7 +134,9 @@ const TasksScreen = ({ navigation }) => {
               onChangeText={setNewTask}
               placeholder="Enter a new task"
             />
-            <Button title="Add Task" onPress={addTask} />
+            <TouchableOpacity style={[Elements.mainButton, styles.button]} onPress={addTask}>
+                <Text style={Elements.mainButtonText}>Add Task</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Display list of tasks for the selected date */}
@@ -101,7 +180,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   todoContainer: {
-    marginTop: 20,
+    marginTop: 10,
   },
   todoTitle: {
     fontSize: 18,
