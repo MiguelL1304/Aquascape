@@ -37,8 +37,8 @@ const Elements = StyleSheet.create({
 
   // Title Text Styles
   title: {
-    fontSize: 30,
-    fontWeight: 'bold',
+    fontSize: 40,
+    fontWeight: '500',
     color: Colors.primary,
     marginBottom: 20,
   },
@@ -46,22 +46,23 @@ const Elements = StyleSheet.create({
   // Text Field Styles
   textField: {
     height: 50,
-    width: '100%',
+    width: '90%',
     borderColor: Colors.border,
-    borderWidth: 1,
+    borderBottomWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 10,
-    marginBottom: 15,
-    backgroundColor: Colors.white,
-    fontSize: 20,
+    marginBottom: 10,
+    backgroundColor: Colors.background,
+    fontSize: 16,
   },
 
   // Header Styles
   header: {
     fontSize: 20,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginBottom: 10,
+    fontWeight: '500',
+    color: Colors.textPrimary,
+    marginBottom: 5,
+    alignSelf: 'flex-start',
   },
 });
 
