@@ -8,6 +8,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 // Import of screens
 import LoginScreen from './Stacks/LoginScreen';
 import SignupScreen from './Stacks/SignupScreen';
+import ForgetPassword from './Stacks/ForgetPassword';
 import HomeTabs from './Stacks/home/HomeTabs';
 import SettingsScreen from './Stacks/SettingsScreen';
 import SplashScreen from './Stacks/SplashScreen';
@@ -64,6 +65,11 @@ export default function AppNavigation() {
         <Stack.Screen
           name="Signup"
           component={SignupScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ForgetPassword"
+          component={ForgetPassword}
           options={{ headerShown: false }}
         />
         <Stack.Screen
