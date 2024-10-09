@@ -12,6 +12,9 @@ import HomeTabs from './Stacks/home/HomeTabs';
 import SettingsScreen from './Stacks/SettingsScreen';
 import SplashScreen from './Stacks/SplashScreen';
 import TestScreen from './Stacks/TestScreen';
+import StoreScreen from './Stacks/StoreScreen';
+import AquariumScreen from './Stacks/home/AquariumScreen';
+
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
@@ -42,6 +45,8 @@ function DrawerNavigation() {
             ),
           })}
         />
+
+      
     </Drawer.Navigator>
   );
 }
@@ -77,6 +82,16 @@ export default function AppNavigation() {
           component={TestScreen}
           options={{ headerShown: false }}
         />    
+        <Stack.Screen
+          name="Aquarium"
+          component={AquariumScreen}
+          options={{ headerShown: false }}
+        />  
+        <Stack.Screen
+          name="Store"
+          component={StoreScreen}
+          options={{ headerShown: false }}
+        />  
       </Stack.Navigator>
     </NavigationContainer>
   );

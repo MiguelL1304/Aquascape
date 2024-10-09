@@ -27,7 +27,7 @@ const SplashScreen = ({ navigation }) => {
           subTitleStyles: styles.subtitle,
         },
         {
-          backgroundColor: "#FFFFAA",
+          backgroundColor: "#FFFFBB",
           image: <Image source={require("../../assets/Splash Animations/checklist.gif")}
           style={styles.image} />,
           title: "Habit Tracking",
