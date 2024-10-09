@@ -1,46 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, Keyboard, Image, Platform,
+import { StyleSheet, Text, View, TextInput, Keyboard, Image, Platform, Alert,
   TouchableOpacity, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, Dimensions  
 } from 'react-native';
 import Elements from '../../constants/Elements';
 import Colors from '../../constants/Colors';
 
 import { auth } from "../../firebase/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { sendPasswordResetEmail } from "firebase/auth";
 
 const screenHeight = Dimensions.get('window').height;
 
-const LoginScreen = ({ navigation }) => {
+const ForgetPassword = ({ navigation }) => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
 
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        navigation.replace('Drawer');
-      }
-    });
-
-    return unsubscribe;
-  }, []);
-
-  const handleLogin = () => {
-    signInWithEmailAndPassword(auth, email, password).catch((error) =>
-      alert(error.message)
-    );
+  const handlePasswordReset = async () => {
+    await sendPasswordResetEmail(auth, email)
+    .then(() => {
+        Alert.alert(
+            "Password Reset",
+            "Check your email for instructions on how to reset your password!",
+            [{
+                text: "OK",
+                onPress: () => navigation.goBack(),
+            },
+        ]);
+    })
+    .catch((error) => alert(error.message))
   };
 
-  const handleSignup = () => {
-    navigation.replace('Signup');
-  };
-
-  const handleForgotPassword = () => {
-    navigation.navigate('ForgetPassword');
+  const handleCancel= () => {
+    navigation.replace('Login');
   };
 
   return (
     <KeyboardAvoidingView 
-    style={{ flex: 1, backgroundColor: Colors.lightBlue}}
+      style={{ flex: 1, backgroundColor: Colors.lightBlue}}
       behavior={Platform.OS === "ios" ? "padding" : null}
     >
     <ScrollView style={styles.scrollContainer}>
@@ -55,7 +49,7 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.container}>
           
             {/* Title */}
-            <Text style={Elements.title}>Aquascape</Text>
+            <Text style={Elements.title}>Password Resest</Text>
 
             <Text style={[Elements.header, styles.header]}>Email</Text>
 
@@ -70,38 +64,17 @@ const LoginScreen = ({ navigation }) => {
               autoCapitalize="none"
             />
 
-            <Text style={[Elements.header, styles.header]}>Password</Text>
-
-            <TextInput
-              style={Elements.textField}
-              placeholder="Password"
-              placeholderTextColor={Colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-
-            {/* Forgot Password Button */}
-            <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPasswordButton}>
-              <Text style={styles.forgotPasswordText}>Forget Password?</Text>
-            </TouchableOpacity>
-
             <View style={styles.buttonContainer}>
 
               {/* Main Button */}
-              <TouchableOpacity style={[Elements.mainButton, styles.button]} onPress={handleLogin}>
-                <Text style={Elements.mainButtonText}>Login</Text>
+              <TouchableOpacity style={[Elements.mainButton, styles.button]} onPress={handlePasswordReset}>
+                <Text style={Elements.mainButtonText}>Send</Text>
               </TouchableOpacity>
 
               {/* Secondary Button */}
-              <View style={styles.signupContainer}>
-                <Text style={styles.signupText}>Dont have an account?    </Text>
-                <TouchableOpacity onPress={handleSignup}>
-                  <Text style={[styles.signupText, { fontWeight: 'bold' }]}>Sign Up</Text>
-                </TouchableOpacity>
-              </View>
-              
+              <TouchableOpacity style={[Elements.secondaryButton, styles.buttonSecondary]} onPress={handleCancel}>
+                <Text style={Elements.secondaryButtonText}>Cancel</Text>
+              </TouchableOpacity>
                 
 
             </View>
@@ -117,7 +90,7 @@ const LoginScreen = ({ navigation }) => {
   );
 };
 
-export default LoginScreen;
+export default ForgetPassword;
 
 const styles = StyleSheet.create({
   scrollContainer: {
@@ -143,16 +116,15 @@ const styles = StyleSheet.create({
 
   button: {
     width: '70%',
-    marginBottom: 15,
+    marginBottom: 5,
     alignItems: 'center',
   },
 
-  signupContainer: {
+  buttonSecondary: {
     width: '70%',
     marginBottom: 10,
     alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
+    borderWidth: 0,
   },
 
   buttonContainer: {
@@ -171,11 +143,6 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     color: Colors.textSecondary,
     fontSize: 14,
-  },
-
-  signupText: {
-    color: Colors.textSecondary,
-    fontSize: 16,
   },
   
   header: {
