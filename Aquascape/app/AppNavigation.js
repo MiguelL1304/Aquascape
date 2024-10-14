@@ -15,6 +15,8 @@ import SplashScreen from './Stacks/SplashScreen';
 import TestScreen from './Stacks/TestScreen';
 import StoreScreen from './Stacks/StoreScreen';
 import AquariumScreen from './Stacks/home/AquariumScreen';
+import TasksScreen from './Stacks/home/TasksScreen';
+import AddTaskScreen from './Stacks/AddTaskScreen';
 
 
 const Drawer = createDrawerNavigator();
@@ -98,6 +100,16 @@ export default function AppNavigation() {
           component={StoreScreen}
           options={{ headerShown: false }}
         />  
+        <Stack.Screen
+          name="TasksScreen" 
+          component={TasksScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AddTaskScreen" 
+          component={AddTaskScreen}
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
