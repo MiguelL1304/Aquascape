@@ -17,6 +17,7 @@ import StoreScreen from './Stacks/StoreScreen';
 import AquariumScreen from './Stacks/home/AquariumScreen';
 import TasksScreen from './Stacks/home/TasksScreen';
 import AddTaskScreen from './Stacks/AddTaskScreen';
+import TimerScreen from './Stacks/home/TimerScreen';
 
 
 const Drawer = createDrawerNavigator();
@@ -109,6 +110,11 @@ export default function AppNavigation() {
           name="AddTaskScreen" 
           component={AddTaskScreen}
           options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="TimerScreen"
+          component={TimerScreen}
+          options={{ headerShown: false}}
         />
       </Stack.Navigator>
     </NavigationContainer>

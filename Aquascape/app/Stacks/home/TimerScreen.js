@@ -1,31 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { Circle } from 'react-native-progress';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 const TimerScreen = () => {
-  const [secondsLeft, setSecondsLeft] = useState(1500); // Default to 25 minutes (1500 seconds)
+  const route = useRoute();
+  const { taskTitle, fromTasks } = route.params || {};
+  const navigation = useNavigation();
+
+  const [secondsLeft, setSecondsLeft] = useState(1500); // Default to 25 mins
   const [isActive, setIsActive] = useState(false);
-  const [customTime, setCustomTime] = useState('25'); // default set to 25 mins
+  const [customTime, setCustomTime] = useState('25'); // Default set to 25 mins
 
   useEffect(() => {
     let interval = null;
 
     if (isActive && secondsLeft > 0) {
-      interval = setInterval(() => {
-        setSecondsLeft((seconds) => seconds - 1);
-      }, 1000);
+      interval = setInterval(() => setSecondsLeft((seconds) => seconds - 1), 1000);
     } else if (secondsLeft === 0) {
       clearInterval(interval);
       alert('Session complete!');
     } else {
       clearInterval(interval);
     }
+
     return () => clearInterval(interval);
   }, [isActive, secondsLeft]);
 
-  const toggleTimer = () => {
-    setIsActive(!isActive);
-  };
+  const toggleTimer = () => setIsActive(!isActive);
 
   const resetTimer = () => {
     setIsActive(false);
@@ -39,18 +42,30 @@ const TimerScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* Back Button */}
+      {fromTasks && (
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <View style={styles.backContainer}>
+            <Icon name="arrow-back" size={24} color="#fff"style={{marginRight: 10}}/>
+            <Text style={styles.backButtonText}>Back</Text>
+          </View>
+          
+        </TouchableOpacity>
+      )}
+
+      <Text style={styles.taskTitle}>{taskTitle}</Text>
+
       <View style={styles.circleWrapper}>
         <Circle
           size={250}
-          progress={1 - percentage / 100} // progress has to be between 0 and 1
-          showsText={false}
+          progress={1 - percentage / 100}
           thickness={20}
           color="#FFF"
-          borderWidth={0}
           unfilledColor="rgba(255, 255, 255, 0.3)"
         />
-
-        {/* Timer or Set Timer Input centered in the circle */}
         <View style={styles.timerTextContainer}>
           <Text style={styles.timerText}>
             {minutes}:{seconds < 10 ? `0${seconds}` : seconds}
@@ -66,15 +81,18 @@ const TimerScreen = () => {
             keyboardType="numeric"
             value={customTime}
             onChangeText={(value) => setCustomTime(value)}
-            maxLength={3} // 999 mins max session time
+            maxLength={3}
           />
         </View>
       )}
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.customButton} onPress={toggleTimer}>
-          <Text style={styles.buttonText}>{isActive ? 'Pause' : 'Start'}</Text>
+          <Text style={styles.buttonText}>
+            {isActive ? 'Pause' : 'Start'}
+          </Text>
         </TouchableOpacity>
+
         <TouchableOpacity style={styles.customButton} onPress={resetTimer}>
           <Text style={styles.buttonText}>Reset</Text>
         </TouchableOpacity>
@@ -91,24 +109,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#3498db',
   },
   circleWrapper: {
-    position: 'relative', // Allows absolute positioning of the text inside the circle
+    position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
   },
   timerTextContainer: {
-    position: 'absolute', // Centers the text within the circle
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
+    position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
   },
   timerText: {
-    fontSize: 50, // Increased size for better visibility
-    color: '#FFFFFF', 
+    fontSize: 50,
+    color: '#FFFFFF',
     fontWeight: 'bold',
-    textAlign: 'center',
   },
   inputContainer: {
     marginTop: 30,
@@ -119,7 +132,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     marginBottom: 10,
-    textAlign: 'center',
   },
   input: {
     height: 50,
@@ -142,7 +154,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2980b9',
     padding: 10,
     borderRadius: 10,
-    margin: 10,
     width: 100,
     alignItems: 'center',
   },
@@ -151,6 +162,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    padding: 10,
+  },
+  backButtonText: {
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
+  taskTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    marginTop: 60,
+  },
+  backContainer: {
+    flexDirection: 'row',
+    marginTop: 30,
+  }
 });
 
 export default TimerScreen;
