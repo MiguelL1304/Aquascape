@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, Button, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, Button, 
+  TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { CheckBox } from 'react-native-elements';
 import CalendarStrip from 'react-native-calendar-strip';
@@ -109,7 +110,12 @@ const TasksScreen = ({ navigation }) => {
     <View style={styles.container}>
       {isExpanded ? (
         <Calendar
-          style={{ paddingBottom: 10, marginTop: 30 }}
+          style={{ 
+            paddingBottom: 10, 
+            marginTop: 30,
+            backgroundColor: 'transparent', // Set background to transparent
+            ...(Platform.OS === 'ios' && { marginTop: 50 }), 
+          }}
           minDate={minDate}
           maxDate={maxDate}
           onDayPress={(day) => setSelectedDate(day.dateString)}
@@ -119,7 +125,12 @@ const TasksScreen = ({ navigation }) => {
         />
       ) : (
         <CalendarStrip
-          style={{ height: 100, paddingTop: 20, paddingBottom: 10 }}
+          style={{
+            height: 100,
+            paddingTop: 20,
+            paddingBottom: 10,
+            ...(Platform.OS === 'ios' && { marginTop: 30 }), // Add extra padding for iOS
+          }}
           selectedDate={selectedDate}
           onDateSelected={(date) =>
             setSelectedDate(new Date(date).toISOString().split('T')[0])
