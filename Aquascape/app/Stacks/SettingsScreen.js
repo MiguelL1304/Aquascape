@@ -31,7 +31,7 @@ const SettingsScreen = ({ navigation }) => {
   };
 
   const handleTest = () => {
-    navigation.replace("Test");
+    navigation.navigate("Store");
   };
 
   return (
