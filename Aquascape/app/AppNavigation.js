@@ -18,6 +18,7 @@ import AquariumScreen from './Stacks/home/AquariumScreen';
 import TasksScreen from './Stacks/home/TasksScreen';
 import AddTaskScreen from './Stacks/AddTaskScreen';
 import TimerScreen from './Stacks/home/TimerScreen';
+import AchievementsScreen from './Stacks/AchievementsScreen';
 
 
 const Drawer = createDrawerNavigator();
@@ -49,6 +50,23 @@ function DrawerNavigation() {
             ),
           })}
         />
+      
+      <Drawer.Screen
+          name="Achievements"
+          component={AchievementsScreen}
+          options={({ navigation }) => ({
+            headerTransparent: true,
+            headerTitle: "",
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => navigation.openDrawer()}>
+                <Icon name="menu" size={30} style={{ marginLeft: 10 }} />
+              </TouchableOpacity>
+            ),
+            
+          })}
+        />
+
+        
 
       
     </Drawer.Navigator>

@@ -6,7 +6,7 @@ const StoreScreen = ({ navigation }) => {
   const items = [
     { id: '1', name: 'Shark', image: require("../../assets/Splash Animations/shark2.gif"), price: '100' },
     { id: '2', name: 'Clownfish', image: require("../../assets/clownfish.gif"), price: '100' },
-    { id: '3', name: 'Fisherman', image: require("../../assets/Fisherman.gif"), price: '100' },
+    { id: '3', name: 'Pufferfish', image: require("../../assets/Pufferfish.gif"), price: '100' },
     { id: '4', name: 'Sea Shell', image: require("../../assets/shell.png"), price: '100' },
     { id: '5', name: '',image: require("../../assets/crying cat.gif"), price: '100' },
     { id: '6', name: '',image: require("../../assets/crying cat.gif"), price: '100' },
