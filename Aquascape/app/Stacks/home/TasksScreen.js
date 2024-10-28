@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, Button, 
-  TouchableOpacity, ScrollView, Platform } from 'react-native';
+  TouchableOpacity, ScrollView, Platform, Keyboard } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { CheckBox } from 'react-native-elements';
 import CalendarStrip from 'react-native-calendar-strip';
 import AddTaskScreen from '../AddTaskScreen';
+import BottomSheet from '@gorhom/bottom-sheet';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
 //Styling
 import Elements from '../../../constants/Elements';
@@ -58,6 +60,12 @@ const TasksScreen = ({ navigation }) => {
   const [newTask, setNewTask] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const categories = ['Work', 'Personal', 'Lifestyle', 'Others'];
+  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const sheetRef = useRef(null);
+  const calendarOpacity = useSharedValue(0);
+  const stripOpacity = useSharedValue(1); // Strip calendar starts visible
+  const stripTranslateY = useSharedValue(0);
+  const contentTranslateY = useSharedValue(0);
   const [selectedTasks, setSelectedTasks] = useState({});
   const { minDate, maxDate } = getMinMaxDates();
 
@@ -67,6 +75,16 @@ const TasksScreen = ({ navigation }) => {
       [selectedDate]: [...(tasks[selectedDate] || []), newTask],
     };
     setTasks(updatedTasks);
+
+    // Close the bottom sheet after adding the task
+    closeBottomSheet();
+  };
+
+  const closeBottomSheet = () => {
+    if(sheetRef.current) {
+      sheetRef.current.close(); // Close the bottom sheet using the ref
+    }
+    setBottomSheetVisible(false);
   };
 
   const toggleTaskCompletion = (taskId) => {
@@ -91,7 +109,42 @@ const TasksScreen = ({ navigation }) => {
     setSelectedTasks({});
   };
 
-  const toggleCalendarView = () => setIsExpanded(!isExpanded);
+  useEffect(() => {
+    stripOpacity.value = withTiming(1, { duration: 300 });
+    stripTranslateY.value = withTiming(-350, { duration: 300 });
+    contentTranslateY.value = withTiming(-300, { duration: 300 });
+  }, []);
+
+  const toggleCalendarView = () => {
+    const nextValue = !isExpanded;
+    setIsExpanded(nextValue);
+
+    if (nextValue) {
+      // Expand full calendar and hide strip
+      calendarOpacity.value = withTiming(1, {duration: 300 });
+      stripOpacity.value = withTiming(0, {duration: 300 });
+      contentTranslateY.value = withTiming(0, { duration: 300 });
+    } else {
+      // Collapse full calendar and show strip
+      calendarOpacity.value = withTiming(0, { duration: 300 });
+      stripOpacity.value = withTiming(1, { duration: 300 });
+      stripTranslateY.value = withTiming(-350, { duration: 300 });
+      contentTranslateY.value = withTiming(-300, { duration: 300 });
+    }
+  };
+
+  const calendarAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: calendarOpacity.value,
+  }));
+
+  const stripAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: stripOpacity.value,
+    transform: [{ translateY: stripTranslateY.value }], 
+  }));
+
+  const contentAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: contentTranslateY.value }],
+  }));
 
   const groupTasksByCategory = (tasksForDate) => {
     const grouped = {};
@@ -108,41 +161,34 @@ const TasksScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {isExpanded ? (
+      {/* Calendar Container */}
+      <View style={styles.calendarContainer}>
+        {/* Full Calendar */}
+      <Animated.View style={[styles.fullCalendar, calendarAnimatedStyle]}>
         <Calendar
-          style={{ 
-            paddingBottom: 10, 
-            marginTop: 30,
-            backgroundColor: 'transparent', // Set background to transparent
-            ...(Platform.OS === 'ios' && { marginTop: 50 }), 
-          }}
+          style={styles.calendar}
           minDate={minDate}
           maxDate={maxDate}
           onDayPress={(day) => setSelectedDate(day.dateString)}
           markedDates={{
-            [selectedDate]: { selected: true, selectedColor: Colors.primary },
-          }}
+            [selectedDate]: { selected: true, selectedColor: Colors.primary } }}
         />
-      ) : (
+      </Animated.View>
+
+      {/* Calendar Strip */}
+      <Animated.View style={[styles.calendarStrip, stripAnimatedStyle]}>
         <CalendarStrip
-          style={{
-            height: 100,
-            paddingTop: 20,
-            paddingBottom: 10,
-            ...(Platform.OS === 'ios' && { marginTop: 30 }), // Add extra padding for iOS
-          }}
+          style={styles.calendarStrip}
           selectedDate={selectedDate}
-          onDateSelected={(date) =>
-            setSelectedDate(new Date(date).toISOString().split('T')[0])
-          }
+          onDateSelected={(date) => setSelectedDate(new Date(date).toISOString().split('T')[0])}
           scrollable
           minDate={minDate}
           maxDate={maxDate}
           markedDates={[
             {
               date: selectedDate,
-              dots: [{ color: Colors.primary, selectedColor: Colors.primary }],
-            },
+              dots: [{ color: Colors.primary, selectedColor: Colors.primary }]
+            }
           ]}
           daySelectionAnimation={{
             type: 'background',
@@ -150,30 +196,25 @@ const TasksScreen = ({ navigation }) => {
             highlightColor: Colors.primary,
           }}
         />
-      )}
+      </Animated.View>
+      </View>
 
-      <TouchableOpacity
-        onPress={toggleCalendarView}
-        style={styles.toggleButton}
-      >
-        <Icon
-          name={isExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
-          size={24}
-        />
-      </TouchableOpacity>
-
-      {selectedDate && (
-        <View style={styles.todoContainer}>
-          <Text style={styles.todoTitle}>Tasks for {selectedDate}:</Text>
+      {/* Tasks List */}
+        <Animated.View style={[styles.todoContainer, contentAnimatedStyle]}>
+      
+          <TouchableOpacity
+            onPress={toggleCalendarView}
+            style={styles.toggleButton}
+          > 
+            <Icon
+              name={isExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+              size={24}
+          />
+        </TouchableOpacity>
 
           <TouchableOpacity
             style={[Elements.mainButton, styles.addButton]}
-            onPress={() =>
-              navigation.navigate('AddTaskScreen', {
-                selectedDate,
-                addTaskCallback: addTask,
-              })
-            }
+            onPress={() => sheetRef.current?.expand()}
           >
             <Text style={Elements.mainButtonText}>Create New Task</Text>
           </TouchableOpacity>
@@ -182,21 +223,24 @@ const TasksScreen = ({ navigation }) => {
             style={[
               Elements.secondaryButton,
               styles.deleteButton,
-              !hasSelectedTasks && styles.disabledButton,
+              !hasSelectedTasks && styles.disabledButton
             ]}
             onPress={hasSelectedTasks ? deleteSelectedTasks : null}
           >
             <Text
               style={[
                 styles.deleteButtonText,
-                !hasSelectedTasks && styles.disabledButtonText,
+                !hasSelectedTasks && styles.disabledButtonText
               ]}
             >
               Clear Completed Tasks
             </Text>
           </TouchableOpacity>
 
-          {tasks[selectedDate] ? (
+          <Text style={styles.todoTitle}>Tasks for {selectedDate}:</Text>
+
+          {/* Task Categories */}
+          {tasks[selectedDate] && tasks[selectedDate].length > 0 ? (
             <FlatList
               data={Object.entries(groupTasksByCategory(tasks[selectedDate]))}
               renderItem={({ item }) => {
@@ -214,7 +258,7 @@ const TasksScreen = ({ navigation }) => {
                         key={task.id}
                         style={[
                           styles.taskItemContainer,
-                          { backgroundColor: categoryColors[task.category] },
+                          { backgroundColor: categoryColors[task.category] }
                         ]}
                         onPress={() =>
                           navigation.navigate('TimerScreen', {
@@ -236,7 +280,7 @@ const TasksScreen = ({ navigation }) => {
                               styles.taskItem,
                               (task.completed ||
                                 selectedTasks[task.id]) &&
-                                styles.taskCompleted,
+                                styles.taskCompleted
                             ]}
                           >
                             {task.title}
@@ -258,8 +302,26 @@ const TasksScreen = ({ navigation }) => {
           ) : (
             <Text>No tasks for this day.</Text>
           )}
-        </View>
-      )}
+        </Animated.View>
+
+        {/* Bottom Sheet for AddTaskScreen */}
+          <BottomSheet
+          ref={sheetRef}
+          snapPoints={['1%', '50%', '95%']}
+          enablePanDownToClose
+          onClose={() => {
+            Keyboard.dismiss(); // Hide keyboard when bottom sheet closes by dragging
+            setBottomSheetVisible(false);
+          }}
+        >
+          <ScrollView>
+          <AddTaskScreen
+            selectedDate={selectedDate}
+            addTaskCallback={addTask}
+            closeBottomSheet={closeBottomSheet} // Use closeBottomSheet to close the sheet and dismiss keyboard
+            />
+            </ScrollView>
+          </BottomSheet>
     </View>
   );
 };
@@ -270,11 +332,36 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: 'flex-start',
   },
+  calendarContainer: {
+    height: 310, 
+    position: 'relative',
+    marginBottom: 30,
+    ...(Platform.OS === 'ios' && { marginTop: 30 }),
+  },
+  fullCalendar: {
+    paddingBottom: 10,
+    marginTop: 30,
+    backgroundColor: 'transparent',
+    ...(Platform.OS === 'ios' && { marginTop: 50 }),
+  },
+  calendarStrip: {
+    height: 100,
+    paddingBottom: 10,
+    ...(Platform.OS === 'ios' && { marginTop: 5 }),
+  },
+  toggleButton: {
+    alignSelf: 'baseline',
+    marginTop: 50,
+    marginBottom: 10,
+    ...(Platform.OS === 'ios' && { marginTop: 40 }),
+  },
   todoContainer: {
     marginTop: 5,
+    ...(Platform.OS === 'ios' && { marginTop: 30 }),
   },
   todoTitle: {
     fontSize: 18,
+    marginTop: 20,
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -282,9 +369,10 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   deleteButton: {
-    marginTop: 20,
+    marginTop: 10,
     marginStart: 185,
     width: '50%',
+    ...(Platform.OS === 'ios' && { marginStart: 175, width: '55%' }),
   },
   deleteButtonText: {
     color: Colors.primary,

@@ -1,19 +1,18 @@
 // AddTaskScreen.js
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Button, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Elements from '../../constants/Elements';
 
 const categories = ['Work', 'Personal', 'Lifestyle', 'Others']; // Categories
 
-const AddTaskScreen = ({ navigation, route }) => {
-  const { selectedDate, addTaskCallback } = route.params; // Get date and callback from params
+const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
   const [taskTitle, setTaskTitle] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null); // Default to the first category
   const [recurrence, setRecurrence] = useState(null); // Default recurrence
 
   const handleAddTask = () => {
-    if (!taskTitle.trim()) return; // Prevent empty titles
+    if (!taskTitle.trim()) return; // Prevent empty titles or duration
     const newTask = {
       id: new Date().getTime(), // Unique ID for the task
       title: taskTitle,
@@ -22,12 +21,18 @@ const AddTaskScreen = ({ navigation, route }) => {
       recurrence,
     };
     addTaskCallback(newTask); // Call the callback to add the task
-    navigation.goBack(); // Navigate back to the TasksScreen
+
+    // Resets the input fields and pickers
+    setTaskTitle('');
+    setSelectedCategory(null);
+    setRecurrence(null);
+
+    closeBottomSheet(); // Close the bottom sheet 
   };
 
   const handleCancel = () => {
-    navigation.goBack(); // Navigate back to the TasksScreen without adding a new task
-  }
+    closeBottomSheet(); // Close the bottom sheet when cancelled
+  };
 
   return (
     <View style={styles.container}>
