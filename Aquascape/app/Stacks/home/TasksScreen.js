@@ -70,10 +70,10 @@ const TasksScreen = ({ navigation }) => {
   const { minDate, maxDate } = getMinMaxDates();
 
   const addTask = (newTask) => {
-    const updatedTasks = {
-      ...tasks,
+      const updatedTasks = {
+        ...tasks,
       [selectedDate]: [...(tasks[selectedDate] || []), newTask],
-    };
+      };
     setTasks(updatedTasks);
 
     // Close the bottom sheet after adding the task
@@ -167,6 +167,7 @@ const TasksScreen = ({ navigation }) => {
       <Animated.View style={[styles.fullCalendar, calendarAnimatedStyle]}>
         <Calendar
           style={styles.calendar}
+          scrollable={true}
           minDate={minDate}
           maxDate={maxDate}
           onDayPress={(day) => setSelectedDate(day.dateString)}
@@ -180,8 +181,8 @@ const TasksScreen = ({ navigation }) => {
         <CalendarStrip
           style={styles.calendarStrip}
           selectedDate={selectedDate}
-          onDateSelected={(date) => setSelectedDate(new Date(date).toISOString().split('T')[0])}
-          scrollable
+          onDateSelected={(date) => setSelectedDate(date.toISOString().split('T')[0])}
+          scrollable={true}
           minDate={minDate}
           maxDate={maxDate}
           markedDates={[
@@ -270,9 +271,9 @@ const TasksScreen = ({ navigation }) => {
                         <CheckBox
                           checked={selectedTasks[task.id]}
                           onPress={() => toggleSelectTask(task.id)}
-                          checkedColor="lightgray"
+                          checkedColor="black"
                           uncheckedColor="white"
-                          containerStyle={{ margin: 0, padding: 0 }}
+                          containerStyle={{ margin: 5, padding: 0 }}
                         />
                         <View style={styles.taskTextContainer}>
                           <Text
@@ -286,9 +287,7 @@ const TasksScreen = ({ navigation }) => {
                             {task.title}
                           </Text>
                           <Text style={styles.taskRecurrence}>
-                            {task.recurrence !== 'None'
-                              ? task.recurrence
-                              : ''}
+                            {task.recurrence !== 'None' ? task.recurrence : ''}
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -333,8 +332,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   calendarContainer: {
-    height: 310, 
+    height: 330, 
     position: 'relative',
+    marginTop: 20,
     marginBottom: 30,
     ...(Platform.OS === 'ios' && { marginTop: 30 }),
   },
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   todoTitle: {
     fontSize: 18,
     marginTop: 20,
-    marginBottom: 10,
+    marginBottom: 20,
     textAlign: 'center',
   },
   addButton: {
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   },
   taskCompleted: {
     textDecorationLine: 'line-through',
-    color: 'lightgray',
+    color: 'black',
   },
   taskRecurrence: {
     fontSize: 12,
