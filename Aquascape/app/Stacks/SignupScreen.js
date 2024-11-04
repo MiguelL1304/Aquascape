@@ -34,6 +34,16 @@ const SignupScreen = ({ navigation }) => {
           email: user.email, // Use `user.email` from the Firebase `user` object
           firstName: firstName, // Pass firstName from the captured value
           createdAt: new Date(),
+          seashells: 0,
+        });
+
+        const aquariumRef = doc(firestoreDB, "aquarium", uid);
+        await setDoc(aquariumRef, {
+          fish: [
+            { name: "Shark", fileName: "StaticShark.gif" },
+            { name: "Pufferfish", fileName: "Pufferfish.gif" }
+          ],
+          decorations: [],
         });
 
         signOut(auth).then(() => navigation.replace("Login"));
