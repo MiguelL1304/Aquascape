@@ -6,9 +6,10 @@ import Icon from 'react-native-vector-icons/Ionicons';
 
 import shell from '../../../assets/shell.png';
 import fisherman from '../../../assets/Fisherman.gif';
+import Colors from '../../../constants/Colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const TimerScreen = () => {
-  const route = useRoute();
+const TimerScreen = ({ route }) => {
   const { taskTitle, fromTasks } = route.params || {};
   const navigation = useNavigation();
 
@@ -17,6 +18,38 @@ const TimerScreen = () => {
   const [customTime, setCustomTime] = useState('25');
   const [shells, setShells] = useState(0);
   const [totalTimeInSeconds, setTotalTimeInSeconds] = useState(1500);
+  
+
+  const [earnedBadges, setEarnedBadges] = useState(['Sea Shell']); // Initialize with default badge
+  const [totalStudyMinutes, setTotalStudyMinutes] = useState(0); // New state for cumulative minutes
+
+  // Load cumulative minutes on component mount
+  useEffect(() => {
+    const loadTotalStudyMinutes = async () => {
+      try {
+        const savedMinutes = await AsyncStorage.getItem('totalStudyMinutes');
+        if (savedMinutes !== null) {
+          const parsedMinutes = parseInt(savedMinutes);
+          setTotalStudyMinutes(isNaN(parsedMinutes) ? 0 : parsedMinutes);
+          console.log(`Loaded cumulative study time: ${parsedMinutes} minutes`);
+        } else {
+          console.log('No previous cumulative time found, starting at 0.');
+        }
+      } catch (error) {
+        console.error("Error loading cumulative time:", error);
+      }
+    };
+    loadTotalStudyMinutes();
+  }, []);
+
+  // Save cumulative minutes each time it updates
+  useEffect(() => {
+    AsyncStorage.setItem('totalStudyMinutes', totalStudyMinutes.toString());
+    console.log(`Saved cumulative study time: ${totalStudyMinutes} minutes`);
+  }, [totalStudyMinutes]);
+
+  
+
 
   useEffect(() => {
     let interval = null;
@@ -27,6 +60,10 @@ const TimerScreen = () => {
       }, 1000);
     } else if (secondsLeft === 0) {
       clearInterval(interval);
+      handleBadgeAward(); // Award badge when session is complete
+    } else {
+      clearInterval(interval);
+
 
       // Calculate total minutes passed
       const timeInMinutes = parseInt(customTime, 10) || 25;
@@ -48,10 +85,46 @@ const TimerScreen = () => {
 
       // Reset timer to default after completion
       resetTimerStates();
+      
     }
 
     return () => clearInterval(interval);
   }, [isActive, secondsLeft]);
+
+  const handleBadgeAward = () => {
+    // Calculate minutes based on custom time to accurately capture session time
+    const sessionMinutes = Math.floor((parseInt(customTime) * 60 - secondsLeft) / 60);
+    const updatedTotalMinutes = totalStudyMinutes + sessionMinutes;
+
+    setTotalStudyMinutes(updatedTotalMinutes);
+
+    console.log(`Session completed: ${sessionMinutes} minutes`);
+    console.log(`Updated cumulative study time after session: ${updatedTotalMinutes} minutes`);
+
+    let newBadges = [...earnedBadges];
+
+    // Badge awarding based on cumulative total minutes
+    if (updatedTotalMinutes >= 60 && !earnedBadges.includes('Conch Shell')) {
+      newBadges.push('Conch Shell');
+      Alert.alert('Congratulations!', 'You earned the Conch Shell badge!');
+    } 
+    if (updatedTotalMinutes >= 300 && !earnedBadges.includes('Starfish')) {
+      newBadges.push('Starfish');
+      Alert.alert('Congratulations!', 'You earned the Starfish badge!');
+    } 
+    if (updatedTotalMinutes >= 1440 && !earnedBadges.includes('Mermaid')) {
+      newBadges.push('Mermaid');
+      Alert.alert('Congratulations!', 'You earned the Mermaid badge!');
+    }
+
+    if (newBadges.length > earnedBadges.length) {
+      setEarnedBadges(newBadges);
+      navigation.navigate('Achievements', { earnedBadges: newBadges });
+    } else {
+      Alert.alert('Session complete!');
+      navigation.navigate('Achievements', { earnedBadges });
+    }
+  };
 
   const startTimer = () => {
     const timeInMinutes = parseInt(customTime, 10) || 25;
@@ -120,7 +193,6 @@ const TimerScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Back Button */}
       {fromTasks && (
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -138,8 +210,8 @@ const TimerScreen = () => {
         </TouchableOpacity>
       )}
 
-      <Image source={shell} style={styles.shell} />
 
+      <Image source={shell} style={styles.shell} />
       <Text style={styles.taskTitle}>{taskTitle}</Text>
 
       {/* Display Total Shells */}
@@ -197,7 +269,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#3498db',
+    backgroundColor: Colors.theme.blue,
   },
   circleWrapper: {
     position: 'relative',
@@ -220,7 +292,7 @@ const styles = StyleSheet.create({
     width: '50%',
   },
   label: {
-    color: '#FFFFFF',
+    color: Colors.primary,
     fontSize: 18,
     marginBottom: 10,
   },
@@ -242,14 +314,16 @@ const styles = StyleSheet.create({
     width: '60%',
   },
   customButton: {
-    backgroundColor: '#2980b9',
+    backgroundColor: Colors.theme.yellow,
     padding: 10,
     borderRadius: 10,
     width: 100,
     alignItems: 'center',
+    borderColor: Colors.theme.orange,
+    borderWidth: 3,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: Colors.theme.brown,
     fontSize: 18,
     fontWeight: 'bold',
   },
