@@ -75,6 +75,36 @@ const AquariumScreen = ({ navigation }) => {
       positionY: Math.random() * (screenHeight - 120),
       image: require('../../../assets/StaticShark.gif'),
     },
+    {
+      id: 3,
+      offset: useSharedValue(Math.random() * (screenWidth * 3)),
+      direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+      targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
+      duration: Math.random() * 6000 + 5000,
+      scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+      positionY: Math.random() * (screenHeight - 120),
+      image: require('../../../assets/catfish-export.gif'),
+    },
+    {
+      id: 4,
+      offset: useSharedValue(Math.random() * (screenWidth * 3)),
+      direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+      targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
+      duration: Math.random() * 6000 + 5000,
+      scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+      positionY: Math.random() * (screenHeight - 120),
+      image: require('../../../assets/bluetang-export.gif'),
+    },
+    {
+      id: 5,
+      offset: useSharedValue(Math.random() * (screenWidth * 3)),
+      direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+      targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
+      duration: Math.random() * 6000 + 5000,
+      scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+      positionY: Math.random() * (screenHeight - 120),
+      image: require('../../../assets/goldfish-export.gif'),
+    },
     // Add more fish objects as needed
   ];
 
