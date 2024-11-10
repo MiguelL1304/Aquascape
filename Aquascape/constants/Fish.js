@@ -1,36 +1,46 @@
-import React, { useEffect } from 'react';
-import { Dimensions } from 'react-native';
+import React, { useEffect, useCallback } from 'react';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withRepeat,
 } from 'react-native-reanimated';
+import { useFocusEffect } from '@react-navigation/native';
 
-const { width: screenWidth } = Dimensions.get('window');
-
-const Fish = ({ imageSource, positionX, positionY }) => {
+const Fish = ({ imageSource, positionX, positionY, aquariumWidth, aquariumHeight }) => {
   const offset = useSharedValue(positionX); // Starting position
   const scaleX = useSharedValue(1); // 1 for right-facing, -1 for left-facing
 
-  useEffect(() => {
-    const swimDistance = Math.min(screenWidth * 3, positionX + 500); // Max swim distance
-    const swimDuration = Math.random() * 3000 + 3000; // Random duration for each fish
+  const resetAnimation = useCallback(() => {
+    // Ensure the fish starts swimming within the aquarium's horizontal bounds
+    offset.value = positionX;
+    scaleX.value = 1; // Start facing right
+
+    // Calculate maximum swim distance within aquarium bounds
+    const maxSwimDistance = Math.min(aquariumWidth - 150, positionX + 500); // Restrict swim distance to within the aquarium width
+    const swimDuration = Math.random() * 3000 + 5000; // Random duration for each fish
 
     // Define back-and-forth animation with flipping
     offset.value = withRepeat(
-      withTiming(swimDistance, { duration: swimDuration }, (isFinished) => {
-        // Instantly flip scaleX when direction changes
+      withTiming(maxSwimDistance, { duration: swimDuration }, (isFinished) => {
         if (isFinished) {
-          scaleX.value *= -1; // Flip direction by toggling scaleX
+          // Flip direction by toggling scaleX
+          scaleX.value *= -1;
         }
       }),
       -1, // Infinite repeat
       true // Reverse direction
     );
-  }, [offset, positionX, scaleX]);
+  }, [offset, positionX, scaleX, aquariumWidth]);
 
-  // Create animated style for fish movement and instant flipping
+  // Use focus effect to reset animation each time the screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      resetAnimation();
+    }, [resetAnimation])
+  );
+
+  // Create animated style for fish movement and flipping
   const animatedStyles = useAnimatedStyle(() => ({
     transform: [
       { translateX: offset.value },
@@ -44,9 +54,9 @@ const Fish = ({ imageSource, positionX, positionY }) => {
       style={[
         {
           position: 'absolute',
-          top: positionY,
-          width: 100,
-          height: 100,
+          top: Math.min(positionY, aquariumHeight - 150), // Ensure Y position stays within aquarium height bounds
+          width: 150,
+          height: 150,
         },
         animatedStyles,
       ]}

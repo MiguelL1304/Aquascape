@@ -1,26 +1,36 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ScrollView, Image, StyleSheet, Dimensions, View, Text, TouchableOpacity } from 'react-native';
-import { auth } from '../../../firebase/firebase';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView, useWindowDimensions } from 'react-native';
+import { Canvas, useImage, Image as SkiaImage } from "@shopify/react-native-skia";
+import { auth, firestoreDB } from '../../../firebase/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { firestoreDB } from '../../../firebase/firebase';
 import { useFocusEffect } from '@react-navigation/native';
-import Fish from '../../../constants/Fish'; // Import updated Fish component using reanimated
-
-// Importing Colors and Elements for styling
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import Colors from '../../../constants/Colors';
 import Elements from '../../../constants/Elements';
-
-const screenHeight = Dimensions.get('window').height;
-const screenWidth = Dimensions.get('window').width;
+import Fish from '../../../constants/Fish'; // Import the Fish component
 
 const AquariumScreen = ({ navigation }) => {
+  const { height: screenHeight } = useWindowDimensions();
+  const tabBarHeight = useBottomTabBarHeight(); // Get the height of the bottom tab bar
+  const aquariumHeight = screenHeight - tabBarHeight; // Calculate aquarium height
+  const aquariumWidth = aquariumHeight * 4; // Maintain the 1:4 aspect ratio
+
+  const MIN_X_POSITION = 0;
+  const MAX_X_POSITION = aquariumWidth - 150;
+  const MIN_Y_POSITION = 100;
+  const MAX_Y_POSITION = aquariumHeight - 120;
+
   const [fishArray, setFishArray] = useState([]);
+
+  // Define image map for fish images
   const imageMap = {
     "Pufferfish.gif": require("../../../assets/Pufferfish.gif"),
     "StaticShark.gif": require("../../../assets/StaticShark.gif"),
     "goldfish-export.gif": require("../../../assets/goldfish-export.gif"),
-    // Add more images here as needed
   };
+
+  // Load the background image using Skia
+  const background = useImage(require("../../../assets/backgroundSample.png"));
 
   useFocusEffect(
     useCallback(() => {
@@ -34,15 +44,12 @@ const AquariumScreen = ({ navigation }) => {
             const aquariumSnap = await getDoc(aquariumRef);
             if (aquariumSnap.exists()) {
               const fishData = aquariumSnap.data().fish;
-              console.log(fishData);
-
               const updatedFishArray = fishData.map((fish, index) => ({
                 id: index,
-                imageSource: imageMap[fish.fileName] || null,
-                positionX: Math.random() * (screenWidth * 4 - 150),
-                positionY: Math.random() * (screenHeight - 120),  // Random vertical position
+                fileName: fish.fileName,
+                positionX: Math.random() * (MAX_X_POSITION - MIN_X_POSITION) + MIN_X_POSITION,
+                positionY: Math.random() * (MAX_Y_POSITION - MIN_Y_POSITION) + MIN_Y_POSITION,
               }));
-
               setFishArray(updatedFishArray);
             } else {
               console.log("No aquarium data found");
@@ -52,30 +59,52 @@ const AquariumScreen = ({ navigation }) => {
           }
         }
       };
-
       fetchAquariumData();
     }, [])
   );
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView style={styles.scrollContainer} horizontal={true} showsHorizontalScrollIndicator={true}>
-        <View style={styles.bannerContainer}>
-          <Image source={require('../../../assets/backgroundSample.png')} style={styles.banner} resizeMode="cover" />
-          {fishArray.map((fish) => (
-            fish.imageSource && (
-              <Fish
-                key={fish.id}
-                imageSource={fish.imageSource}
-                positionX={fish.positionX}
-                positionY={fish.positionY}
+      <ScrollView
+        horizontal
+        style={{ flex: 1 }}
+        contentContainerStyle={{ width: aquariumWidth, height: aquariumHeight }}
+        showsHorizontalScrollIndicator={false}
+      >
+        <View style={{ flex: 1 }}>
+          <Canvas style={[styles.canvas, { width: aquariumWidth, height: aquariumHeight }]}>
+            {/* Render the background image directly with SkiaImage */}
+            {background && (
+              <SkiaImage
+                image={background}
+                x={0}
+                y={0}
+                width={aquariumWidth} // Updated width
+                height={aquariumHeight} // Updated height
+                fit="cover" // Scale to cover the entire background area
               />
-            )
+            )}
+          </Canvas>
+
+          {/* Render each fish as an animated Fish component */}
+          {fishArray.map((fish) => (
+            <Fish
+              key={fish.id}
+              imageSource={imageMap[fish.fileName]}
+              positionX={fish.positionX}
+              positionY={fish.positionY}
+              aquariumWidth={aquariumWidth}
+              aquariumHeight={aquariumHeight}
+            />
           ))}
         </View>
       </ScrollView>
-      {/* Store button using mainButton styles from Elements */}
-      <TouchableOpacity style={[Elements.mainButton, styles.storeButton]} onPress={() => navigation.navigate("Store")}>
+
+      {/* Store Button positioned absolutely on the screen, not in the scroll view */}
+      <TouchableOpacity
+        style={[Elements.mainButton, styles.storeButton]}
+        onPress={() => navigation.navigate("Store")}
+      >
         <Text style={Elements.mainButtonText}>Store</Text>
       </TouchableOpacity>
     </View>
@@ -85,22 +114,13 @@ const AquariumScreen = ({ navigation }) => {
 export default AquariumScreen;
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flex: 1,
-    backgroundColor: '#ADD8E6',
-  },
-  bannerContainer: {
-    height: screenHeight,
-    width: screenWidth * 4, // Set this to allow space for the fish to move within the horizontal scroll
-    position: 'relative',
-  },
-  banner: {
-    height: '100%',
-    width: '100%',
+  canvas: {
+    position: 'absolute',
   },
   storeButton: {
     position: 'absolute',
     bottom: 30,
     right: 30,
+    zIndex: 1, // Ensure it's above other elements
   },
 });
