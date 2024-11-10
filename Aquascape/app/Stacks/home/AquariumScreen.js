@@ -1,15 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { ScrollView, Image, StyleSheet, Dimensions, View, Text, TouchableOpacity } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withRepeat,
-} from 'react-native-reanimated';
 import { auth } from '../../../firebase/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { firestoreDB } from '../../../firebase/firebase';
 import { useFocusEffect } from '@react-navigation/native';
+import Fish from '../../../constants/Fish'; // Import updated Fish component using reanimated
 
 // Importing Colors and Elements for styling
 import Colors from '../../../constants/Colors';
@@ -19,17 +14,7 @@ const screenHeight = Dimensions.get('window').height;
 const screenWidth = Dimensions.get('window').width;
 
 const AquariumScreen = ({ navigation }) => {
-  const [fishArray, setFishArray] = useState(Array(15).fill(null).map((_, index) => ({
-    id: index + 1,
-    offset: useSharedValue(Math.random() * (screenWidth * 3)),
-    direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
-    targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
-    duration: Math.random() * 6000 + 5000,
-    scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
-    positionY: Math.random() * (screenHeight - 120),
-    image: null,  // Placeholder for the image, will be set based on fetched data
-  })));
-
+  const [fishArray, setFishArray] = useState([]);
   const imageMap = {
     "Pufferfish.gif": require("../../../assets/Pufferfish.gif"),
     "StaticShark.gif": require("../../../assets/StaticShark.gif"),
@@ -37,7 +22,6 @@ const AquariumScreen = ({ navigation }) => {
     // Add more images here as needed
   };
 
-  // Fetch the aquarium data each time the screen is focused
   useFocusEffect(
     useCallback(() => {
       const fetchAquariumData = async () => {
@@ -52,13 +36,14 @@ const AquariumScreen = ({ navigation }) => {
               const fishData = aquariumSnap.data().fish;
               console.log(fishData);
 
-              // Map fetched fish data to update the image in fishArray
-              setFishArray(prevFishArray => prevFishArray.map((fish, index) => {
-                const fetchedFish = fishData[index];
-                return fetchedFish
-                  ? { ...fish, image: imageMap[fetchedFish.fileName] || null }
-                  : fish;
+              const updatedFishArray = fishData.map((fish, index) => ({
+                id: index,
+                imageSource: imageMap[fish.fileName] || null,
+                positionX: Math.random() * (screenWidth * 4 - 150),
+                positionY: Math.random() * (screenHeight - 120),  // Random vertical position
               }));
+
+              setFishArray(updatedFishArray);
             } else {
               console.log("No aquarium data found");
             }
@@ -72,107 +57,24 @@ const AquariumScreen = ({ navigation }) => {
     }, [])
   );
 
-  const fishStyles = fishArray.map(fish =>
-    useAnimatedStyle(() => {
-      return {
-        transform: [
-          { translateX: fish.offset.value },
-          { scaleX: fish.scaleX.value },
-        ],
-        top: fish.positionY,
-      };
-    })
-  );
-
-  // const fishArray = [
-  //   {
-  //     id: 1,
-  //     offset: useSharedValue(Math.random() * (screenWidth * 3)),
-  //     direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
-  //     targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
-  //     duration: Math.random() * 6000 + 5000,
-  //     scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
-  //     positionY: Math.random() * (screenHeight - 120), // Random vertical position within the screen height
-  //     image: require('../../../assets/Pufferfish.gif'),
-  //   },
-  //   {
-  //     id: 2,
-  //     offset: useSharedValue(Math.random() * (screenWidth * 3)),
-  //     direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
-  //     targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
-  //     duration: Math.random() * 6000 + 5000,
-  //     scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
-  //     positionY: Math.random() * (screenHeight - 120),
-  //     image: require('../../../assets/StaticShark.gif'),
-  //   },
-  //   {
-  //     id: 3,
-  //     offset: useSharedValue(Math.random() * (screenWidth * 3)),
-  //     direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
-  //     targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
-  //     duration: Math.random() * 6000 + 5000,
-  //     scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
-  //     positionY: Math.random() * (screenHeight - 120),
-  //     image: require('../../../assets/catfish-export.gif'),
-  //   },
-  //   {
-  //     id: 4,
-  //     offset: useSharedValue(Math.random() * (screenWidth * 3)),
-  //     direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
-  //     targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
-  //     duration: Math.random() * 6000 + 5000,
-  //     scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
-  //     positionY: Math.random() * (screenHeight - 120),
-  //     image: require('../../../assets/bluetang-export.gif'),
-  //   },
-  //   {
-  //     id: 5,
-  //     offset: useSharedValue(Math.random() * (screenWidth * 3)),
-  //     direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
-  //     targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
-  //     duration: Math.random() * 6000 + 5000,
-  //     scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
-  //     positionY: Math.random() * (screenHeight - 120),
-  //     image: require('../../../assets/goldfish-export.gif'),
-  //   },
-  //   // Add more fish objects as needed
-  // ]; 
-
-  useEffect(() => {
-    // Only animate fish entries that have an image (i.e., are populated)
-    fishArray.forEach(fish => {
-      if (fish.image) {  // Check if fish has an image before applying animation
-        const targetPosition = fish.direction.value === 1
-          ? Math.min(fish.offset.value + fish.targetDistance, screenWidth * 3)
-          : Math.max(fish.offset.value - fish.targetDistance, 0);
-
-        fish.offset.value = withRepeat(
-          withTiming(targetPosition, { duration: fish.duration }, () => {
-            fish.direction.value *= -1;
-            fish.scaleX.value *= -1;
-          }),
-          -1,
-          true
-        );
-      }
-    });
-  }, [fishArray]);
-
   return (
     <View style={{ flex: 1 }}>
       <ScrollView style={styles.scrollContainer} horizontal={true} showsHorizontalScrollIndicator={true}>
         <View style={styles.bannerContainer}>
           <Image source={require('../../../assets/backgroundSample.png')} style={styles.banner} resizeMode="cover" />
-          {fishArray.map((fish, index) => (
-            fish.image && (
-              <Animated.View key={fish.id} style={[styles.box, fishStyles[index]]}>
-                <Image source={fish.image} style={styles.boxImage} resizeMode="contain" />
-              </Animated.View>
+          {fishArray.map((fish) => (
+            fish.imageSource && (
+              <Fish
+                key={fish.id}
+                imageSource={fish.imageSource}
+                positionX={fish.positionX}
+                positionY={fish.positionY}
+              />
             )
           ))}
         </View>
       </ScrollView>
-       {/* Store button using mainButton styles from Elements */}
+      {/* Store button using mainButton styles from Elements */}
       <TouchableOpacity style={[Elements.mainButton, styles.storeButton]} onPress={() => navigation.navigate("Store")}>
         <Text style={Elements.mainButtonText}>Store</Text>
       </TouchableOpacity>
@@ -189,22 +91,12 @@ const styles = StyleSheet.create({
   },
   bannerContainer: {
     height: screenHeight,
-    width: screenWidth * 4,
+    width: screenWidth * 4, // Set this to allow space for the fish to move within the horizontal scroll
     position: 'relative',
   },
   banner: {
     height: '100%',
     width: '100%',
-  },
-  box: {
-    height: 120,
-    width: 120,
-    borderRadius: 20,
-    position: 'absolute',
-  },
-  boxImage: {
-    height: 100,
-    width: 100,
   },
   storeButton: {
     position: 'absolute',
