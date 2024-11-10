@@ -84,20 +84,77 @@ const AquariumScreen = ({ navigation }) => {
     })
   );
 
-  useEffect(() => {
-    fishArray.forEach(fish => {
-      const targetPosition = fish.direction.value === 1
-        ? Math.min(fish.offset.value + fish.targetDistance, screenWidth * 3)
-        : Math.max(fish.offset.value - fish.targetDistance, 0);
+  // const fishArray = [
+  //   {
+  //     id: 1,
+  //     offset: useSharedValue(Math.random() * (screenWidth * 3)),
+  //     direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+  //     targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
+  //     duration: Math.random() * 6000 + 5000,
+  //     scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+  //     positionY: Math.random() * (screenHeight - 120), // Random vertical position within the screen height
+  //     image: require('../../../assets/Pufferfish.gif'),
+  //   },
+  //   {
+  //     id: 2,
+  //     offset: useSharedValue(Math.random() * (screenWidth * 3)),
+  //     direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+  //     targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
+  //     duration: Math.random() * 6000 + 5000,
+  //     scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+  //     positionY: Math.random() * (screenHeight - 120),
+  //     image: require('../../../assets/StaticShark.gif'),
+  //   },
+  //   {
+  //     id: 3,
+  //     offset: useSharedValue(Math.random() * (screenWidth * 3)),
+  //     direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+  //     targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
+  //     duration: Math.random() * 6000 + 5000,
+  //     scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+  //     positionY: Math.random() * (screenHeight - 120),
+  //     image: require('../../../assets/catfish-export.gif'),
+  //   },
+  //   {
+  //     id: 4,
+  //     offset: useSharedValue(Math.random() * (screenWidth * 3)),
+  //     direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+  //     targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
+  //     duration: Math.random() * 6000 + 5000,
+  //     scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+  //     positionY: Math.random() * (screenHeight - 120),
+  //     image: require('../../../assets/bluetang-export.gif'),
+  //   },
+  //   {
+  //     id: 5,
+  //     offset: useSharedValue(Math.random() * (screenWidth * 3)),
+  //     direction: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+  //     targetDistance: Math.random() * (screenWidth * 2 - screenWidth) + screenWidth,
+  //     duration: Math.random() * 6000 + 5000,
+  //     scaleX: useSharedValue(Math.random() > 0.5 ? 1 : -1),
+  //     positionY: Math.random() * (screenHeight - 120),
+  //     image: require('../../../assets/goldfish-export.gif'),
+  //   },
+  //   // Add more fish objects as needed
+  // ]; 
 
-      fish.offset.value = withRepeat(
-        withTiming(targetPosition, { duration: fish.duration }, () => {
-          fish.direction.value *= -1;
-          fish.scaleX.value *= -1;
-        }),
-        -1,
-        true
-      );
+  useEffect(() => {
+    // Only animate fish entries that have an image (i.e., are populated)
+    fishArray.forEach(fish => {
+      if (fish.image) {  // Check if fish has an image before applying animation
+        const targetPosition = fish.direction.value === 1
+          ? Math.min(fish.offset.value + fish.targetDistance, screenWidth * 3)
+          : Math.max(fish.offset.value - fish.targetDistance, 0);
+
+        fish.offset.value = withRepeat(
+          withTiming(targetPosition, { duration: fish.duration }, () => {
+            fish.direction.value *= -1;
+            fish.scaleX.value *= -1;
+          }),
+          -1,
+          true
+        );
+      }
     });
   }, [fishArray]);
 
