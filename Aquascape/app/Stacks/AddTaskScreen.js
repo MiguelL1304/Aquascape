@@ -3,6 +3,9 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Platform, ActionSheetIOS } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Calendar } from 'react-native-calendars';
+
+//Styling
+import Colors from '../../constants/Colors';
 import Elements from '../../constants/Elements';
 
 const categories = ['Work', 'Personal', 'Lifestyle', 'Others']; // Categories
@@ -65,7 +68,7 @@ const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
   // Function to handle date selection
   const handleDayPress = (day) => {
     const newSelectedDates = { ...selectedDates };
-    newSelectedDates[day.dateString] = { selected: !newSelectedDates[day.dateString]?.selected };
+    newSelectedDates[day.dateString] = { selected: !newSelectedDates[day.dateString]?.selected, selectedColor: Colors.primary };
     setSelectedDates(newSelectedDates);
   };
 
@@ -178,8 +181,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 24,
-    marginBottom: 20,
+    fontSize: 22,
+    marginBottom: 10,
+    marginTop: -20,
     textAlign: 'center',
   },
   input: {
@@ -211,10 +215,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9f9f9',
   },
   calendarContainer: {
-    marginTop: 20,
+    marginTop: 10,
   },
   buttonContainer: {
-    marginTop: 20,
+    marginTop: 10,
     flexDirection: 'column',
     justifyContent: 'space-between',
     height: 100,

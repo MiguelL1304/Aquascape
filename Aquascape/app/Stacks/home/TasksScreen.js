@@ -1,17 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, Button, 
   TouchableOpacity, ScrollView, Platform, Keyboard } from 'react-native';
-import { Calendar } from 'react-native-calendars';
+import { ExpandableCalendar, CalendarProvider } from 'react-native-calendars';
 import { CheckBox } from 'react-native-elements';
-import CalendarStrip from 'react-native-calendar-strip';
 import AddTaskScreen from '../AddTaskScreen';
 import BottomSheet from '@gorhom/bottom-sheet';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
 //Styling
 import Elements from '../../../constants/Elements';
 import Colors from '../../../constants/Colors';
-import Icon from 'react-native-vector-icons/Ionicons';
 
 // Category colors
 const categoryColors = {
@@ -21,30 +18,32 @@ const categoryColors = {
   Others: '#d8bfd8',
 };
 
-// Calculation of visible weeks
-const getStartOfWeek = (date) => {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day;
-  return new Date(d.setDate(diff));
-};
+//Calculation of visible weeks
+// const getStartOfWeek = (date) => {
+//   const d = new Date(date);
+//   const day = d.getDay();
+//   const diff = d.getDate() - day;
+//   return new Date(d.setDate(diff));
+// };
 
-const getEndOfWeek = (date) => {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = 6 - day;
-  return new Date(d.setDate(d.getDate() + diff));
-};
+// const getEndOfWeek = (date) => {
+//   const d = new Date(date);
+//   const day = d.getDay();
+//   const diff = 6 - day;
+//   return new Date(d.setDate(d.getDate() + diff));
+// };
 
 // Calculate min and max dates
 const getMinMaxDates = () => {
-  const currentDate = new Date();
-  const twoWeeksBefore = new Date(currentDate);
-  twoWeeksBefore.setDate(currentDate.getDate() - 14);
-  const minDate = getStartOfWeek(twoWeeksBefore);
-  const oneMonthAfter = new Date(currentDate);
-  oneMonthAfter.setMonth(currentDate.getMonth() + 1);
-  const maxDate = getEndOfWeek(oneMonthAfter);
+  const minDate = new Date(2024, 9, 1);
+  const maxDate = new Date(2024, 11, 31);
+  // const currentDate = new Date();
+  // const twoWeeksBefore = new Date(currentDate);
+  // twoWeeksBefore.setDate(currentDate.getDate() - 14);
+  // const minDate = getStartOfWeek(twoWeeksBefore);
+  // const oneMonthAfter = new Date(currentDate);
+  // oneMonthAfter.setMonth(currentDate.getMonth() + 1);
+  // const maxDate = getEndOfWeek(oneMonthAfter);
 
   return {
     minDate: minDate.toISOString().split('T')[0],
@@ -58,24 +57,31 @@ const TasksScreen = ({ navigation }) => {
   );
   const [tasks, setTasks] = useState({});
   const [newTask, setNewTask] = useState('');
-  const [isExpanded, setIsExpanded] = useState(false);
   const categories = ['Work', 'Personal', 'Lifestyle', 'Others'];
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
   const sheetRef = useRef(null);
-  const calendarOpacity = useSharedValue(0);
-  const stripOpacity = useSharedValue(1); // Strip calendar starts visible
-  const stripTranslateY = useSharedValue(0);
-  const contentTranslateY = useSharedValue(0);
   const [selectedTasks, setSelectedTasks] = useState({});
   const { minDate, maxDate } = getMinMaxDates();
 
-  const addTask = (newTask) => {
-      const updatedTasks = {
-        ...tasks,
-      [selectedDate]: [...(tasks[selectedDate] || []), newTask],
-      };
-    setTasks(updatedTasks);
+  const markedDates = useMemo(() => {
+    return {
+      [selectedDate]: { selected: true, selectedColor: Colors.primary }
+    };
+  }, [selectedDate]);
 
+  const handleDateChange = useCallback((date) => {
+    setSelectedDate(date);
+  }, []);
+
+  const addTask = (newTask) => {
+    if (!newTask) return;
+    setTasks((prevTasks) => {
+      const updatedTasks = {
+        ...prevTasks,
+        [selectedDate]: [...(prevTasks[selectedDate] || []), newTask],
+      };
+      return updatedTasks;
+    });
     // Close the bottom sheet after adding the task
     closeBottomSheet();
   };
@@ -88,11 +94,13 @@ const TasksScreen = ({ navigation }) => {
   };
 
   const toggleTaskCompletion = (taskId) => {
-    const updatedTasks = tasks[selectedDate].map((task) =>
+    setTasks((prevTasks) => {
+      const updatedTasksForDate = prevTasks[selectedDate].map((task) =>
       task.id === taskId ? { ...task, completed: !task.completed } : task
     );
-    setTasks({ ...tasks, [selectedDate]: updatedTasks });
-  };
+    return { ...prevTasks, [selectedDate]: updatedTasksForDate };
+  });
+};
 
   const toggleSelectTask = (taskId) => {
     setSelectedTasks((prevSelectedTasks) => ({
@@ -109,43 +117,6 @@ const TasksScreen = ({ navigation }) => {
     setSelectedTasks({});
   };
 
-  useEffect(() => {
-    stripOpacity.value = withTiming(1, { duration: 300 });
-    stripTranslateY.value = withTiming(-350, { duration: 300 });
-    contentTranslateY.value = withTiming(-300, { duration: 300 });
-  }, []);
-
-  const toggleCalendarView = () => {
-    const nextValue = !isExpanded;
-    setIsExpanded(nextValue);
-
-    if (nextValue) {
-      // Expand full calendar and hide strip
-      calendarOpacity.value = withTiming(1, {duration: 300 });
-      stripOpacity.value = withTiming(0, {duration: 300 });
-      contentTranslateY.value = withTiming(0, { duration: 300 });
-    } else {
-      // Collapse full calendar and show strip
-      calendarOpacity.value = withTiming(0, { duration: 300 });
-      stripOpacity.value = withTiming(1, { duration: 300 });
-      stripTranslateY.value = withTiming(-350, { duration: 300 });
-      contentTranslateY.value = withTiming(-300, { duration: 300 });
-    }
-  };
-
-  const calendarAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: calendarOpacity.value,
-  }));
-
-  const stripAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: stripOpacity.value,
-    transform: [{ translateY: stripTranslateY.value }], 
-  }));
-
-  const contentAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: contentTranslateY.value }],
-  }));
-
   const groupTasksByCategory = (tasksForDate) => {
     const grouped = {};
     tasksForDate.forEach((task) => {
@@ -160,59 +131,34 @@ const TasksScreen = ({ navigation }) => {
   );
 
   return (
+    <CalendarProvider
+      date={selectedDate}
+      minDate={minDate}
+      maxDate={maxDate}
+      onDateChanged={handleDateChange}
+    >
     <View style={styles.container}>
       {/* Calendar Container */}
       <View style={styles.calendarContainer}>
-        {/* Full Calendar */}
-      <Animated.View style={[styles.fullCalendar, calendarAnimatedStyle]}>
-        <Calendar
+        <ExpandableCalendar
           style={styles.calendar}
-          scrollable={true}
           minDate={minDate}
           maxDate={maxDate}
           onDayPress={(day) => setSelectedDate(day.dateString)}
-          markedDates={{
-            [selectedDate]: { selected: true, selectedColor: Colors.primary } }}
-        />
-      </Animated.View>
-
-      {/* Calendar Strip */}
-      <Animated.View style={[styles.calendarStrip, stripAnimatedStyle]}>
-        <CalendarStrip
-          style={styles.calendarStrip}
-          selectedDate={selectedDate}
-          onDateSelected={(date) => setSelectedDate(date.toISOString().split('T')[0])}
-          scrollable={true}
-          minDate={minDate}
-          maxDate={maxDate}
-          markedDates={[
-            {
-              date: selectedDate,
-              dots: [{ color: Colors.primary, selectedColor: Colors.primary }]
-            }
-          ]}
-          daySelectionAnimation={{
-            type: 'background',
-            duration: 200,
-            highlightColor: Colors.primary,
+          markedDates={markedDates}
+          disableWeekScroll={true}
+          allowSelectionOutOfRange={false}
+          pastScrollRange={2}
+          futureScrollRange={2}
+          theme={{
+            todayTextColor: Colors.primary,
+            selectedDayBackgroundColor: Colors.primary,
           }}
-        />
-      </Animated.View>
+      />
       </View>
 
       {/* Tasks List */}
-        <Animated.View style={[styles.todoContainer, contentAnimatedStyle]}>
-      
-          <TouchableOpacity
-            onPress={toggleCalendarView}
-            style={styles.toggleButton}
-          > 
-            <Icon
-              name={isExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
-              size={24}
-          />
-        </TouchableOpacity>
-
+        <View style={styles.todoContainer}>
           <TouchableOpacity
             style={[Elements.mainButton, styles.addButton]}
             onPress={() => sheetRef.current?.expand()}
@@ -256,17 +202,9 @@ const TasksScreen = ({ navigation }) => {
                     </Text>
                     {tasksForCategory.map((task) => (
                       <TouchableOpacity
-                        key={task.id}
-                        style={[
-                          styles.taskItemContainer,
-                          { backgroundColor: categoryColors[task.category] }
-                        ]}
-                        onPress={() =>
-                          navigation.navigate('TimerScreen', {
-                            taskTitle: task.title,
-                            fromTasks: true
-                          })
-                        }
+                        key={`${category}-${task.id}`}
+                        style={[styles.taskItemContainer, { backgroundColor: categoryColors[task.category] }]}
+                        onPress={() => navigation.navigate('TimerScreen', { taskTitle: task.title, fromTasks: true })}
                       >
                         <CheckBox
                           checked={selectedTasks[task.id]}
@@ -279,9 +217,7 @@ const TasksScreen = ({ navigation }) => {
                           <Text
                             style={[
                               styles.taskItem,
-                              (task.completed ||
-                                selectedTasks[task.id]) &&
-                                styles.taskCompleted
+                              (task.completed || selectedTasks[task.id]) && styles.taskCompleted
                             ]}
                           >
                             {task.title}
@@ -297,16 +233,19 @@ const TasksScreen = ({ navigation }) => {
               }}
               keyExtractor={(item) => item[0]}
               contentContainerStyle={{ paddingBottom: 100 }}
+              windowSize={5}
+              initialNumToRender={5}
+              maxToRenderPerBatch={5}
             />
           ) : (
             <Text>No tasks for this day.</Text>
           )}
-        </Animated.View>
+        </View>
 
         {/* Bottom Sheet for AddTaskScreen */}
           <BottomSheet
           ref={sheetRef}
-          snapPoints={['1%', '50%', '95%']}
+          snapPoints={['1%', '20%', '95%']}
           enablePanDownToClose
           onClose={() => {
             Keyboard.dismiss(); // Hide keyboard when bottom sheet closes by dragging
@@ -314,16 +253,17 @@ const TasksScreen = ({ navigation }) => {
           }}
         >
           <ScrollView>
-          <AddTaskScreen
-            selectedDate={selectedDate}
-            addTaskCallback={addTask}
-            closeBottomSheet={closeBottomSheet} // Use closeBottomSheet to close the sheet and dismiss keyboard
+            <AddTaskScreen
+              selectedDate={selectedDate}
+              addTaskCallback={addTask}
+              closeBottomSheet={closeBottomSheet} // Use closeBottomSheet to close the sheet and dismiss keyboard
             />
             </ScrollView>
           </BottomSheet>
-    </View>
-  );
-};
+        </View>
+      </CalendarProvider>
+    );
+  };
 
 const styles = StyleSheet.create({
   container: {
@@ -332,32 +272,18 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   calendarContainer: {
-    height: 330, 
-    position: 'relative',
-    marginTop: 20,
+    flexDirection: 'column',
+    marginTop: 40,
     marginBottom: 30,
-    ...(Platform.OS === 'ios' && { marginTop: 30 }),
+    ...(Platform.OS === 'ios' && { marginTop: 80 }),
   },
-  fullCalendar: {
-    paddingBottom: 10,
-    marginTop: 30,
-    backgroundColor: 'transparent',
-    ...(Platform.OS === 'ios' && { marginTop: 50 }),
-  },
-  calendarStrip: {
-    height: 100,
-    paddingBottom: 10,
-    ...(Platform.OS === 'ios' && { marginTop: 5 }),
-  },
-  toggleButton: {
-    alignSelf: 'baseline',
-    marginTop: 50,
-    marginBottom: 10,
-    ...(Platform.OS === 'ios' && { marginTop: 40 }),
+  calendar: {
+    width: '110%',
+    alignSelf: 'center',
   },
   todoContainer: {
     marginTop: 5,
-    ...(Platform.OS === 'ios' && { marginTop: 30 }),
+    ...(Platform.OS === 'ios' && { marginTop: -10 }),
   },
   todoTitle: {
     fontSize: 18,
