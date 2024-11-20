@@ -7,7 +7,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import shell from '../../../assets/shell.png';
 import fisherman from '../../../assets/Fisherman.gif';
 import Colors from '../../../constants/Colors';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { firestoreDB as db, auth } from '../../../firebase/firebase';
 
 const TimerScreen = ({ route }) => {
   const { taskTitle, fromTasks } = route.params || {};
@@ -23,32 +24,94 @@ const TimerScreen = ({ route }) => {
   const [earnedBadges, setEarnedBadges] = useState(['Sea Shell']); // Initialize with default badge
   const [totalStudyMinutes, setTotalStudyMinutes] = useState(0); // New state for cumulative minutes
 
-  // Load cumulative minutes on component mount
-  useEffect(() => {
-    const loadTotalStudyMinutes = async () => {
-      try {
-        const savedMinutes = await AsyncStorage.getItem('totalStudyMinutes');
-        if (savedMinutes !== null) {
-          const parsedMinutes = parseInt(savedMinutes);
-          setTotalStudyMinutes(isNaN(parsedMinutes) ? 0 : parsedMinutes);
-          console.log(`Loaded cumulative study time: ${parsedMinutes} minutes`);
+  const loadTotalStudyMinutes = async () => {
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
+          console.error('User is not authenticated');
+          return;
+      }      
+        const badgeDocRef = doc(db, 'profile', userId, 'badges', 'badgeData');
+        const badgeDoc = await getDoc(badgeDocRef);
+
+        if (badgeDoc.exists()) {
+            const data = badgeDoc.data();
+            setTotalStudyMinutes(data.totalMinutes || 0);
+            setEarnedBadges(data.earnedBadges || ['Sea Shell']); // Load badges from Firestore
+            console.log(`Loaded from Firestore: ${data.totalMinutes} minutes and badges: ${data.earnedBadges}`);
         } else {
-          console.log('No previous cumulative time found, starting at 0.');
+          console.log('No badge data found. Initializing Firestore document...');
+          await setDoc(badgeDocRef, { totalMinutes: 0, earnedBadges: ['Sea Shell'] }, { merge: true });          
         }
-      } catch (error) {
-        console.error("Error loading cumulative time:", error);
-      }
-    };
+    } catch (error) {
+        console.error('Error loading from Firestore:', error);
+    }
+};
+
+useEffect(() => {
     loadTotalStudyMinutes();
-  }, []);
+}, []);
 
-  // Save cumulative minutes each time it updates
-  useEffect(() => {
-    AsyncStorage.setItem('totalStudyMinutes', totalStudyMinutes.toString());
-    console.log(`Saved cumulative study time: ${totalStudyMinutes} minutes`);
-  }, [totalStudyMinutes]);
 
-  
+const saveTotalStudyMinutes = async (newMinutes, newBadges) => {
+  try {
+    const userId = auth.currentUser?.uid;
+    if (!userId) {
+        console.error('User is not authenticated');
+        return;
+    }    
+      const badgeDocRef = doc(db, 'profile', userId, 'badges', 'badgeData');
+
+      await updateDoc(badgeDocRef, {
+          totalMinutes: newMinutes,
+          earnedBadges: newBadges,
+      });
+      console.log(`Saved to Firestore: ${newMinutes} minutes and badges: ${newBadges}`);
+  } catch (error) {
+      console.error('Error saving to Firestore:', error);
+  }
+};
+
+const handleBadgeAward = async () => {
+  const sessionMinutes = Math.floor((parseInt(customTime) * 60 - secondsLeft) / 60);
+  const updatedTotalMinutes = totalStudyMinutes + sessionMinutes;
+
+  setTotalStudyMinutes(updatedTotalMinutes);
+
+  let newBadges = [...earnedBadges];
+
+  // Award badges based on cumulative total minutes
+  if (updatedTotalMinutes >=60 && !earnedBadges.includes('Conch Shell')) {
+      newBadges.push('Conch Shell');
+      Alert.alert('Congratulations!', 'You earned the Conch Shell badge!');
+  }
+  if (updatedTotalMinutes >= 300 && !earnedBadges.includes('Starfish')) {
+      newBadges.push('Starfish');
+      Alert.alert('Congratulations!', 'You earned the Starfish badge!');
+  }
+  if (updatedTotalMinutes >= 1440 && !earnedBadges.includes('Mermaid')) {
+      newBadges.push('Mermaid');
+      Alert.alert('Congratulations!', 'You earned the Mermaid badge!');
+  }
+
+  // Save updated minutes and badges to Firestore
+  await saveTotalStudyMinutes(updatedTotalMinutes, newBadges);
+
+  // Update state and navigate to Achievements
+  if (newBadges.length > earnedBadges.length) {
+      setEarnedBadges(newBadges);
+      navigation.navigate('Achievements', { earnedBadges: newBadges });
+  } else {
+      Alert.alert('Session complete!');
+      navigation.navigate('Achievements', { earnedBadges });
+  }
+
+  resetTimerStates();
+
+};
+
+
+
 
 
   useEffect(() => {
@@ -91,40 +154,6 @@ const TimerScreen = ({ route }) => {
     return () => clearInterval(interval);
   }, [isActive, secondsLeft]);
 
-  const handleBadgeAward = () => {
-    // Calculate minutes based on custom time to accurately capture session time
-    const sessionMinutes = Math.floor((parseInt(customTime) * 60 - secondsLeft) / 60);
-    const updatedTotalMinutes = totalStudyMinutes + sessionMinutes;
-
-    setTotalStudyMinutes(updatedTotalMinutes);
-
-    console.log(`Session completed: ${sessionMinutes} minutes`);
-    console.log(`Updated cumulative study time after session: ${updatedTotalMinutes} minutes`);
-
-    let newBadges = [...earnedBadges];
-
-    // Badge awarding based on cumulative total minutes
-    if (updatedTotalMinutes >= 60 && !earnedBadges.includes('Conch Shell')) {
-      newBadges.push('Conch Shell');
-      Alert.alert('Congratulations!', 'You earned the Conch Shell badge!');
-    } 
-    if (updatedTotalMinutes >= 300 && !earnedBadges.includes('Starfish')) {
-      newBadges.push('Starfish');
-      Alert.alert('Congratulations!', 'You earned the Starfish badge!');
-    } 
-    if (updatedTotalMinutes >= 1440 && !earnedBadges.includes('Mermaid')) {
-      newBadges.push('Mermaid');
-      Alert.alert('Congratulations!', 'You earned the Mermaid badge!');
-    }
-
-    if (newBadges.length > earnedBadges.length) {
-      setEarnedBadges(newBadges);
-      navigation.navigate('Achievements', { earnedBadges: newBadges });
-    } else {
-      Alert.alert('Session complete!');
-      navigation.navigate('Achievements', { earnedBadges });
-    }
-  };
 
   const startTimer = () => {
     const timeInMinutes = parseInt(customTime, 10) || 25;
