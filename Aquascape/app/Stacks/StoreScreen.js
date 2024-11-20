@@ -10,10 +10,10 @@ const StoreScreen = ({ navigation }) => {
     { id: '4', name: 'Blue Tang', image: require("../../assets/bluetang-export.gif"), price: '100' },
     { id: '5', name: 'Cat Fish',image: require("../../assets/catfish-export.gif"), price: '100' },
     { id: '6', name: 'Goldfish',image: require("../../assets/goldfish-export.gif"), price: '100' },
-    { id: '7', name: '',image: require("../../assets/crying cat.gif"), price: '100' },
-    { id: '8', name: '',image: require("../../assets/crying cat.gif"), price: '100' },
-    { id: '9', name: '',image: require("../../assets/crying cat.gif"), price: '100' },
-    { id: '10',name: '',image: require("../../assets/crying cat.gif"), price: '100' },
+    { id: '7', name: '',image: require("../../assets/cat.gif"), price: '100' },
+    { id: '8', name: '',image: require("../../assets/cat.gif"), price: '100' },
+    { id: '9', name: '',image: require("../../assets/cat.gif"), price: '100' },
+    { id: '10',name: '',image: require("../../assets/cat.gif"), price: '100' },
   ];
 
   const [selectedItem, setSelectedItem] = useState(null);
