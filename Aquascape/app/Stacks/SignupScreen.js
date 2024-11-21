@@ -28,7 +28,9 @@ const SignupScreen = ({ navigation }) => {
   const handleUserStateChange = async (user, firstName) => {
     if (user) {
       try {
-        const uid = user.uid; // Use the `user` object provided by Firebase
+        const uid = user.uid;
+
+        //Creates profile doc
         const userProfileRef = doc(firestoreDB, "profile", uid);
         await setDoc(userProfileRef, {
           email: user.email, // Use `user.email` from the Firebase `user` object
@@ -37,14 +39,54 @@ const SignupScreen = ({ navigation }) => {
           seashells: 0,
         });
 
-        const aquariumRef = doc(firestoreDB, "aquarium", uid);
-        await setDoc(aquariumRef, {
+        //Creates aquarium data in the subcollection
+        const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
+        await setDoc(aquariumDocRef, {
           fish: [
-            { name: "Shark", fileName: "StaticShark.gif" },
+            { name: "Shark", fileName: "Shark.gif" },
             { name: "Pufferfish", fileName: "Pufferfish.gif" }
           ],
           decorations: [],
         });
+
+        //Creates achievements doc in the subcollection
+        const achievementsDocRef = doc(firestoreDB, "profile", uid, "achievements", "data");
+        await setDoc(achievementsDocRef, {
+          achievements: [
+            { name: "First Fish", description: "Bought your first fish!", unlockedAt: null },
+            { name: "Decorator", description: "Added your first decoration!", unlockedAt: null },
+          ],
+        });
+
+        // Function to create tasks for a given month
+        const createTasksForMonth = async (year, month) => {
+          const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`; // Format as "YYYY-MM"
+          const monthTasksRef = doc(firestoreDB, "profile", uid, "tasks", monthKey);
+
+          // Predefined week keys
+          const weeksData = {
+            "1-7": [],
+            "8-14": [],
+            "15-21": [],
+            "22-28": [],
+            "29-end": [],
+          };
+
+          // Write the document for the month
+          await setDoc(monthTasksRef, weeksData);
+        };
+
+        // Get the current date
+        const now = new Date();
+
+        // Create tasks for the current month
+        await createTasksForMonth(now.getFullYear(), now.getMonth());
+
+        // Create tasks for the next month
+        const nextMonth = now.getMonth() === 11 ? 0 : now.getMonth() + 1; // Handle December -> January
+        const nextMonthYear = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+        await createTasksForMonth(nextMonthYear, nextMonth);
+
 
         signOut(auth).then(() => navigation.replace("Login"));
       } catch (error) {
