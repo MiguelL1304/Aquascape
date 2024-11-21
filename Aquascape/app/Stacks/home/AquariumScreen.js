@@ -24,9 +24,10 @@ const AquariumScreen = ({ navigation }) => {
 
   // Define image map for fish images
   const imageMap = {
-    "Pufferfish.gif": require("../../../assets/Pufferfish.gif"),
-    "StaticShark.gif": require("../../../assets/StaticShark.gif"),
-    "goldfish-export.gif": require("../../../assets/goldfish-export.gif"),
+    "Pufferfish.gif": require("../../../assets/fish/Pufferfish.gif"),
+    "Shark.gif": require("../../../assets/fish/Shark.gif"),
+    "Goldfish.gif": require("../../../assets/fish/Goldfish.gif"),
+    "Catfish.gif": require("../../../assets/fish/Catfish.gif"),
   };
 
   // Load the background image using Skia
@@ -38,7 +39,7 @@ const AquariumScreen = ({ navigation }) => {
         const user = auth.currentUser;
         if (user) {
           const uid = user.uid;
-          const aquariumRef = doc(firestoreDB, "aquarium", uid);
+          const aquariumRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
 
           try {
             const aquariumSnap = await getDoc(aquariumRef);
