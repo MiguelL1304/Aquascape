@@ -85,7 +85,7 @@ const StoreScreen = ({ navigation }) => {
         });
         setSeashells(seashells - selectedItem.price);
   
-        // Add fish to aquarium with the correct fileName and rarity
+        // Add fish to aquarium
         const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
         await updateDoc(aquariumDocRef, {
           fish: arrayUnion({ name: selectedItem.name, fileName: selectedItem.fileName, rarity: selectedItem.rarity }),
