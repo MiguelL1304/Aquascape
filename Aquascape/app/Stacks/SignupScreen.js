@@ -42,10 +42,8 @@ const SignupScreen = ({ navigation }) => {
         //Creates aquarium data in the subcollection
         const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
         await setDoc(aquariumDocRef, {
-          fish: [
-            { name: "Shark", fileName: "Shark.gif" },
-            { name: "Pufferfish", fileName: "Pufferfish.gif" }
-          ],
+          fish: [],
+          storageFish: [],
           decorations: [],
         });
 

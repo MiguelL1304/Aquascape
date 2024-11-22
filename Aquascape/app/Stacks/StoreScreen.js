@@ -1,22 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, Modal, TouchableOpacity, Alert } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, FlatList, Image, Modal, TouchableOpacity, Alert } from "react-native";
+import Icon from "react-native-vector-icons/Ionicons";
 import { auth, firestoreDB } from "../../firebase/firebase";
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 
 const StoreScreen = ({ navigation }) => {
   const items = [
-    { id: '1', name: 'Shark', image: require("../../assets/fish/Shark.gif"), price: 100, fileName: "Shark.gif", rarity: "common" },
-    { id: '2', name: 'Clownfish', image: require("../../assets/fish/Clownfish.gif"), price: 100, fileName: "Clownfish.gif", rarity: "common" },
-    { id: '3', name: 'Pufferfish', image: require("../../assets/fish/Pufferfish.gif"), price: 100, fileName: "Pufferfish.gif", rarity: "common" },
-    { id: '4', name: 'Blue Tang', image: require("../../assets/fish/Bluetang.gif"), price: 100, fileName: "Bluetang.gif", rarity: "common" },
-    { id: '5', name: 'Cat Fish', image: require("../../assets/fish/Catfish.gif"), price: 100, fileName: "Catfish.gif", rarity: "rare" },
-    { id: '6', name: 'Goldfish', image: require("../../assets/fish/Goldfish.gif"), price: 100, fileName: "Goldfish.gif", rarity: "common" },
+    { id: "1", name: "Shark", image: require("../../assets/fish/Shark.gif"), price: 100, fileName: "Shark.gif", rarity: "common" },
+    { id: "2", name: "Clownfish", image: require("../../assets/fish/Clownfish.gif"), price: 100, fileName: "Clownfish.gif", rarity: "common" },
+    { id: "3", name: "Pufferfish", image: require("../../assets/fish/Pufferfish.gif"), price: 100, fileName: "Pufferfish.gif", rarity: "common" },
+    { id: "4", name: "Blue Tang", image: require("../../assets/fish/Bluetang.gif"), price: 100, fileName: "Bluetang.gif", rarity: "common" },
+    { id: "5", name: "Cat Fish", image: require("../../assets/fish/Catfish.gif"), price: 100, fileName: "Catfish.gif", rarity: "rare" },
+    { id: "6", name: "Goldfish", image: require("../../assets/fish/Goldfish.gif"), price: 100, fileName: "Goldfish.gif", rarity: "common" },
   ];
   const [seashells, setSeashells] = useState(0);
   const [userFish, setUserFish] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [userFishCounts, setUserFishCounts] = useState({});
 
   // Fetch seashells and user fish
   useEffect(() => {
@@ -36,7 +37,18 @@ const StoreScreen = ({ navigation }) => {
         const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
         const aquariumSnap = await getDoc(aquariumDocRef);
         if (aquariumSnap.exists()) {
-          setUserFish(aquariumSnap.data().fish || []);
+          const data = aquariumSnap.data();
+          const fishCounts = {};
+
+          // Calculate fish counts from aquarium and storage
+          (data.fish || []).forEach((fish) => {
+            fishCounts[fish.name] = (fishCounts[fish.name] || 0) + 1;
+          });
+          (data.storageFish || []).forEach((fish) => {
+            fishCounts[fish.name] = (fishCounts[fish.name] || 0) + (fish.count || 1);
+          });
+
+          setUserFishCounts(fishCounts);
         }
       }
     };
@@ -55,73 +67,121 @@ const StoreScreen = ({ navigation }) => {
 
   const handleBuy = async () => {
     if (!selectedItem) return;
-  
+
     const user = auth.currentUser;
     if (user) {
       const uid = user.uid;
-  
-      // Check rarity rules
-      if (selectedItem.rarity === "rare") {
-        const hasRareFish = userFish.some(fish => fish.rarity === "rare");
-        if (hasRareFish) {
-          Alert.alert("Purchase Failed", "You can only own one rare fish.");
+
+      try {
+        // Check if the user has enough seashells
+        if (seashells < selectedItem.price) {
+          Alert.alert("Insufficient Seashells", "You do not have enough seashells.");
           closeModal();
           return;
         }
-      }
-  
-      // Check if the user has enough seashells
-      if (seashells < selectedItem.price) {
-        Alert.alert("Insufficient Seashells", "You do not have enough seashells.");
-        closeModal();
-        return;
-      }
-  
-      try {
+
+        // Fetch aquarium data
+        const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
+        const aquariumSnap = await getDoc(aquariumDocRef);
+
+        if (!aquariumSnap.exists()) {
+          Alert.alert("Error", "Aquarium data not found.");
+          closeModal();
+          return;
+        }
+
+        const aquariumData = aquariumSnap.data();
+        const storageFish = aquariumData.storageFish || [];
+
+        // Check if the fish already exists in storage
+        const fishInStorage = storageFish.find((fish) => fish.name === selectedItem.name);
+
+        if (fishInStorage) {
+          // Enforce rarity and count rules
+          if (selectedItem.rarity === "rare") {
+            Alert.alert("Purchase Failed", "You can only own one rare fish.");
+            closeModal();
+            return;
+          } else if (selectedItem.rarity === "common" && fishInStorage.count >= 5) {
+            Alert.alert("Purchase Failed", "You can only own up to 5 of this common fish.");
+            closeModal();
+            return;
+          }
+
+          // Increment the count for the fish already in storage
+          fishInStorage.count += 1;
+        } else {
+          // Add the new fish to storage
+          storageFish.push({
+            name: selectedItem.name,
+            fileName: selectedItem.fileName,
+            rarity: selectedItem.rarity,
+            count: 1,
+          });
+        }
+
         // Deduct seashells
         const userProfileRef = doc(firestoreDB, "profile", uid);
         await updateDoc(userProfileRef, {
           seashells: seashells - selectedItem.price,
         });
         setSeashells(seashells - selectedItem.price);
-  
-        // Add fish to aquarium
-        const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
-        await updateDoc(aquariumDocRef, {
-          fish: arrayUnion({ name: selectedItem.name, fileName: selectedItem.fileName, rarity: selectedItem.rarity }),
-        });
-        setUserFish([...userFish, { name: selectedItem.name, fileName: selectedItem.fileName, rarity: selectedItem.rarity }]);
-  
-        Alert.alert("Purchase Successful", `${selectedItem.name} has been added to your aquarium.`);
+
+        // Update the storageFish array in Firestore
+        await updateDoc(aquariumDocRef, { storageFish });
+
+        // Recalculate fish counts
+        const updatedCounts = { ...userFishCounts };
+        updatedCounts[selectedItem.name] = (updatedCounts[selectedItem.name] || 0) + 1;
+        setUserFishCounts(updatedCounts);
+
+        Alert.alert("Purchase Successful", `${selectedItem.name} has been added to your storage.`);
       } catch (error) {
         console.error("Error during purchase:", error);
         Alert.alert("Error", "An error occurred during the purchase. Please try again.");
       }
-  
+
       closeModal();
     }
   };
-  
-  
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.itemContainer} onPress={() => handlePress(item)}>
-      <Image source={item.image} style={styles.itemImage} />
-      <Text style={styles.itemPrice}>{item.price}</Text>
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }) => {
+    // Determine if the item is sold out
+    const isSoldOut =
+      (item.rarity === "rare" && (userFishCounts[item.name] || 0) >= 1) ||
+      (item.rarity === "common" && (userFishCounts[item.name] || 0) >= 5);
+
+    return (
+      <View style={styles.itemContainer}>
+        {isSoldOut && (
+          <View style={styles.soldOutOverlay}>
+            <Text style={styles.soldOutText}>SOLD OUT</Text>
+          </View>
+        )}
+        <TouchableOpacity
+          disabled={isSoldOut} // Disable TouchableOpacity for sold-out items
+          onPress={() => handlePress(item)}
+        >
+          <Image source={item.image} style={styles.itemImage} />
+          <View style={styles.priceContainer}>
+            <Text style={styles.itemPrice}>{item.price}</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.screen}>
       {/* Top buttons */}
       <View style={styles.topRow}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('HomeTabs')}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("HomeTabs")}>
           <Icon name="arrow-back" size={24} color="#fff" />
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
 
         <View style={styles.shellCountContainer}>
-          <Image source={require('../../assets/shell.png')} style={styles.shellButton} />
+          <Image source={require("../../assets/shell.png")} style={styles.shellButton} />
           <Text style={styles.shellCountText}>{seashells}</Text>
         </View>
       </View>
@@ -173,24 +233,24 @@ const StoreScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#82D5FF',
+    backgroundColor: "#82D5FF",
     paddingHorizontal: 20,
   },
   topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 10,
-    backgroundColor: '#82D5FF',
+    backgroundColor: "#82D5FF",
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   backButtonText: {
-    color: '#fff',
+    color: "#fff",
     marginLeft: 5,
     fontSize: 16,
   },
@@ -200,37 +260,38 @@ const styles = StyleSheet.create({
   },
   header: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FF9500',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#FF9500",
+    textAlign: "center",
     borderRadius: 10,
     borderWidth: 4,
-    borderColor: '#FF9500',
-    backgroundColor: '#FFFFCC',
+    borderColor: "#FF9500",
+    backgroundColor: "#FFFFCC",
     padding: 10,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 10,
   },
   flatListContainer: {
     paddingTop: 40,
     paddingBottom: 20,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   flatListRow: {
-    justifyContent: 'space-between', // Ensures columns are evenly spaced
+    justifyContent: "space-between",
   },
   itemContainer: {
     flex: 1,
     marginVertical: 15,
     marginHorizontal: 10,
     padding: 20,
-    backgroundColor: '#FFFFCC',
+    backgroundColor: "#FFFFCC",
     borderRadius: 10,
     borderWidth: 3,
-    borderColor: '#A0522D',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "#A0522D",
+    alignItems: "center",
+    justifyContent: "center",
     height: 150,
+    position: "relative",
   },
   itemImage: {
     width: 100,
@@ -238,32 +299,35 @@ const styles = StyleSheet.create({
   },
   itemPrice: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FF9500',
+    fontWeight: "bold",
+    color: "#FF9500",
     borderWidth: 2,
-    borderColor: '#FF9500',
-    backgroundColor: '#FFDCA4',
+    borderColor: "#FF9500",
+    backgroundColor: "#FFDCA4",
     padding: 2,
     borderRadius: 5,
-    textAlign: 'center',
+    textAlign: "center",
     width: 70,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
-  // Modal styles
+  priceContainer: {
+    alignSelf: "center",
+    zIndex: 1,
+  },
   modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
     width: 300,
-    backgroundColor: '#FFFFCC',
+    backgroundColor: "#FFFFCC",
     borderWidth: 8,
-    borderColor: '#8B4513',
+    borderColor: "#8B4513",
     padding: 20,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalImage: {
     width: 150,
@@ -271,38 +335,55 @@ const styles = StyleSheet.create({
   },
   modalText: {
     fontSize: 25,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginTop: 10,
-    color: '#FF9500',
+    color: "#FF9500",
   },
   modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '60%',
-    alignContent: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "60%",
+    alignContent: "center",
   },
   closeButton: {
     marginTop: 20,
-    backgroundColor: '#FF9500',
+    backgroundColor: "#FF9500",
     padding: 10,
     borderRadius: 5,
     borderWidth: 3,
-    borderColor: '#FF9500',
-    backgroundColor: '#FFDCA4',
+    borderColor: "#FF9500",
+    backgroundColor: "#FFDCA4",
   },
   closeButtonText: {
-    color: '#FF9500',
-    fontWeight: 'bold',
+    color: "#FF9500",
+    fontWeight: "bold",
   },
   shellCountContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   shellCountText: {
     marginLeft: 5,
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+  },
+  soldOutOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 10,
+    zIndex: 2,
+  },
+  soldOutText: {
+    color: "#FFFFFF",
+    fontWeight: "bold",
+    fontSize: 20,
   },
 });
 
