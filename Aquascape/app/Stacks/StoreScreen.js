@@ -5,19 +5,69 @@ import { auth, firestoreDB } from "../../firebase/firebase";
 import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 
 const StoreScreen = ({ navigation }) => {
-  const items = [
-    { id: "1", name: "Shark", image: require("../../assets/fish/Shark.gif"), price: 100, fileName: "Shark.gif", rarity: "common" },
-    { id: "2", name: "Clownfish", image: require("../../assets/fish/Clownfish.gif"), price: 100, fileName: "Clownfish.gif", rarity: "common" },
-    { id: "3", name: "Pufferfish", image: require("../../assets/fish/Pufferfish.gif"), price: 100, fileName: "Pufferfish.gif", rarity: "common" },
-    { id: "4", name: "Blue Tang", image: require("../../assets/fish/Bluetang.gif"), price: 100, fileName: "Bluetang.gif", rarity: "common" },
-    { id: "5", name: "Cat Fish", image: require("../../assets/fish/Catfish.gif"), price: 100, fileName: "Catfish.gif", rarity: "rare" },
-    { id: "6", name: "Goldfish", image: require("../../assets/fish/Goldfish.gif"), price: 100, fileName: "Goldfish.gif", rarity: "common" },
-  ];
+  const [items, setItems] = useState([
+    { id: "1", name: "Shark", image: require("../../assets/fish/Shark.gif"), price: 100, fileName: "Shark.gif", rarity: "common", unlocked: true },
+    { id: "2", name: "Clownfish", image: require("../../assets/fish/Clownfish.gif"), price: 100, fileName: "Clownfish.gif", rarity: "common", unlocked: true },
+    { id: "3", name: "Pufferfish", image: require("../../assets/fish/Pufferfish.gif"), price: 100, fileName: "Pufferfish.gif", rarity: "common", unlocked: true },
+    { id: "4", name: "Blue Tang", image: require("../../assets/fish/Bluetang.gif"), price: 100, fileName: "Bluetang.gif", rarity: "common", unlocked: true },
+    { id: "5", name: "Cat Fish", image: require("../../assets/fish/Catfish.gif"), price: 100, fileName: "Catfish.gif", rarity: "rare", unlocked: true },
+    { id: "6", name: "Goldfish", image: require("../../assets/fish/Goldfish.gif"), price: 100, fileName: "Goldfish.gif", rarity: "common", unlocked: true },
+    { id: '7', name: '', image: require("../../assets/cat.gif"), price: '100', unlocked: false, requirement: { type: 'productivity', hours: 1 } },
+    { id: '8', name: '', image: require("../../assets/cat.gif"), price: '100', unlocked: false, requirement: { type: 'productivity', hours: 5 } },
+    { id: '9', name: '', image: require("../../assets/cat.gif"), price: '100', unlocked: false,requirement: { type: 'productivity', hours: 10 } },
+    { id: '10', name: '', image: require("../../assets/cat.gif"), price: '100', unlocked: false, requirement: { type: 'productivity', hours: 24 } },
+  ]);
+
   const [seashells, setSeashells] = useState(0);
   const [userFish, setUserFish] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [userFishCounts, setUserFishCounts] = useState({});
+
+  const [userProgress, setUserProgress] = useState({});
+
+  useEffect(() => {
+    const fetchUserProgress = async () => {
+        try {
+            const userId = auth.currentUser?.uid;
+            if (!userId) {
+                console.error('User is not authenticated');
+                return;
+            }
+
+            const progressDocRef = doc(firestoreDB, 'profile', userId, 'badges', 'badgeData');
+            const progressDoc = await getDoc(progressDocRef);
+
+            if (progressDoc.exists()) {
+                const data = progressDoc.data();
+                console.log('Fetched user progress:', data);
+                setUserProgress(data);
+            } else {
+                console.log('No progress data found in Firestore.');
+            }
+        } catch (error) {
+            console.error('Error fetching user progress:', error);
+        }
+    };
+
+    fetchUserProgress();
+}, []);
+
+useEffect(() => {
+  const updatedItems = items.map((item) => {
+    if (
+      item.requirement?.type === "productivity" &&
+      userProgress.totalMinutes >= item.requirement.hours * 60
+    ) {
+      return { ...item, unlocked: true };
+    }
+    return item;
+  });
+
+  // console.log("Updated Items:", updatedItems); // Debug to verify `unlocked` state
+  setItems(updatedItems); // Update state with unlocked items
+}, [userProgress]);
+
 
   // Fetch seashells and user fish
   useEffect(() => {
@@ -57,6 +107,13 @@ const StoreScreen = ({ navigation }) => {
   }, []);
 
   const handlePress = (item) => {
+    if (!item.unlocked) {
+      const requirementMessage = item.requirement?.type === 'productivity'
+          ? `You need ${item.requirement.hours} hours of productivity to unlock this item.`
+          : 'This item is locked.';
+      Alert.alert('Locked Item', requirementMessage);
+      return;
+  }
     setSelectedItem(item);
     setIsModalVisible(true); // Open modal on item press
   };
@@ -153,6 +210,16 @@ const StoreScreen = ({ navigation }) => {
 
     return (
       <View style={styles.itemContainer}>
+      {/* Locked Overlay */}
+      {!item.unlocked && (
+        <TouchableOpacity
+          style={styles.lockedOverlay}
+          onPress={() => handlePress(item)} // Ensure this is triggered for locked items
+        >
+          <Text style={styles.lockedText}>Locked</Text>
+        </TouchableOpacity>
+      )}
+
         {isSoldOut && (
           <View style={styles.soldOutOverlay}>
             <Text style={styles.soldOutText}>SOLD OUT</Text>
@@ -170,6 +237,8 @@ const StoreScreen = ({ navigation }) => {
       </View>
     );
   };
+
+  
 
   return (
     <View style={styles.screen}>
@@ -291,11 +360,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     height: 150,
-    position: "relative",
+    position: "relative", // Ensure relative positioning for overlay
+    overflow: "hidden", // Prevent overlay from spilling out
   },
+  
   itemImage: {
     width: 100,
     height: 100,
+    zIndex: 1,
   },
   itemPrice: {
     fontSize: 16,
@@ -385,6 +457,28 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 20,
   },
+  lockedOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 5,
+    zIndex: 2,
+  },
+  lockedText: {
+    color: "#FFFFFF", // White color
+    fontWeight: "bold", // Bold font
+    fontSize: 20, // Increase the font size
+    textAlign: "center", // Center the text
+    textTransform: "uppercase", // Optional: Make the text uppercase
+    letterSpacing: 1.5, // Optional: Add spacing between letters
+  },
+  
+  
 });
 
 export default StoreScreen;
