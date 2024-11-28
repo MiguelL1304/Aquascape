@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert, Modal, Button } from 'react-native';
 import { Circle } from 'react-native-progress';
+import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 import shell from '../../../assets/shell.png';
@@ -19,138 +20,34 @@ const TimerScreen = ({ route }) => {
   const [customTime, setCustomTime] = useState('25');
   const [shells, setShells] = useState(0);
   const [totalTimeInSeconds, setTotalTimeInSeconds] = useState(1500);
-  
-
-  const [earnedBadges, setEarnedBadges] = useState(['Sea Shell']); // Initialize with default badge
-  const [totalStudyMinutes, setTotalStudyMinutes] = useState(0); // New state for cumulative minutes
-
-  const loadTotalStudyMinutes = async () => {
-    try {
-      const userId = auth.currentUser?.uid;
-      if (!userId) {
-          console.error('User is not authenticated');
-          return;
-      }      
-        const badgeDocRef = doc(db, 'profile', userId, 'badges', 'badgeData');
-        const badgeDoc = await getDoc(badgeDocRef);
-
-        if (badgeDoc.exists()) {
-            const data = badgeDoc.data();
-            setTotalStudyMinutes(data.totalMinutes || 0);
-            setEarnedBadges(data.earnedBadges || ['Sea Shell']); // Load badges from Firestore
-            console.log(`Loaded from Firestore: ${data.totalMinutes} minutes and badges: ${data.earnedBadges}`);
-        } else {
-          console.log('No badge data found. Initializing Firestore document...');
-          await setDoc(badgeDocRef, { totalMinutes: 0, earnedBadges: ['Sea Shell'] }, { merge: true });          
-        }
-    } catch (error) {
-        console.error('Error loading from Firestore:', error);
-    }
-};
-
-useEffect(() => {
-    loadTotalStudyMinutes();
-}, []);
-
-
-const saveTotalStudyMinutes = async (newMinutes, newBadges) => {
-  try {
-    const userId = auth.currentUser?.uid;
-    if (!userId) {
-        console.error('User is not authenticated');
-        return;
-    }    
-      const badgeDocRef = doc(db, 'profile', userId, 'badges', 'badgeData');
-
-      await updateDoc(badgeDocRef, {
-          totalMinutes: newMinutes,
-          earnedBadges: newBadges,
-      });
-      console.log(`Saved to Firestore: ${newMinutes} minutes and badges: ${newBadges}`);
-  } catch (error) {
-      console.error('Error saving to Firestore:', error);
-  }
-};
-
-const handleBadgeAward = async () => {
-  const sessionMinutes = Math.floor((parseInt(customTime) * 60 - secondsLeft) / 60);
-  const updatedTotalMinutes = totalStudyMinutes + sessionMinutes;
-
-  setTotalStudyMinutes(updatedTotalMinutes);
-
-  let newBadges = [...earnedBadges];
-
-  // Award badges based on cumulative total minutes
-  if (updatedTotalMinutes >=60 && !earnedBadges.includes('Conch Shell')) {
-      newBadges.push('Conch Shell');
-      Alert.alert('Congratulations!', 'You earned the Conch Shell badge!');
-  }
-  if (updatedTotalMinutes >= 300 && !earnedBadges.includes('Starfish')) {
-      newBadges.push('Starfish');
-      Alert.alert('Congratulations!', 'You earned the Starfish badge!');
-  }
-  if (updatedTotalMinutes >= 1440 && !earnedBadges.includes('Mermaid')) {
-      newBadges.push('Mermaid');
-      Alert.alert('Congratulations!', 'You earned the Mermaid badge!');
-  }
-
-  // Save updated minutes and badges to Firestore
-  await saveTotalStudyMinutes(updatedTotalMinutes, newBadges);
-
-  // Update state and navigate to Achievements
-  if (newBadges.length > earnedBadges.length) {
-      setEarnedBadges(newBadges);
-      navigation.navigate('Achievements', { earnedBadges: newBadges });
-  } else {
-      Alert.alert('Session complete!');
-      navigation.navigate('Achievements', { earnedBadges });
-  }
-
-  resetTimerStates();
-
-};
-
-
-
-
+  const [isPickerVisible, setIsPickerVisible] = useState(false);
 
   useEffect(() => {
     let interval = null;
-
+  
     if (isActive && secondsLeft > 0) {
       interval = setInterval(() => {
         setSecondsLeft((seconds) => seconds - 1);
       }, 1000);
-    } else if (secondsLeft === 0) {
+    } else if (secondsLeft === 0 && isActive) {
       clearInterval(interval);
-      handleBadgeAward(); // Award badge when session is complete
-    } else {
-      clearInterval(interval);
-
-
-      // Calculate total minutes passed
-      const timeInMinutes = parseInt(customTime, 10) || 25;
-      const minutesPassed = timeInMinutes;
-
-      // Add bonus shells of +10 upon completion
+  
+      // Accrue full session shells
+      const timeInMinutes = parseInt(customTime, 10);
       const bonusShells = 10;
-      const totalSessionShells = minutesPassed + bonusShells;
-
-      // Update total shells
+      const totalSessionShells = timeInMinutes + bonusShells;
+  
       setShells((prevShells) => prevShells + totalSessionShells);
-
-      // Alert user with accurate shell count
+  
       Alert.alert(
         'Session Complete!',
         `You have accrued ${totalSessionShells} shells.`,
         [{ text: 'OK' }]
       );
-
-      // Reset timer to default after completion
+  
       resetTimerStates();
-      
     }
-
+  
     return () => clearInterval(interval);
   }, [isActive, secondsLeft]);
 
@@ -178,18 +75,16 @@ const handleBadgeAward = async () => {
           text: 'Stop Timer',
           onPress: () => {
             const minutesPassed = Math.floor((totalTimeInSeconds - secondsLeft) / 60);
-
-            // Update total shells
-            setShells((prevShells) => prevShells + minutesPassed);
-
-            // Alert user with accurate shell count
+            const partialBonusShells = Math.round((minutesPassed / (totalTimeInSeconds / 60)) * 10);
+  
+            setShells((prevShells) => prevShells + minutesPassed + partialBonusShells);
+  
             Alert.alert(
               'Timer Stopped',
-              `You have accrued ${minutesPassed} shells.`,
+              `You have accrued ${minutesPassed + partialBonusShells} shells.`,
               [{ text: 'OK' }]
             );
-
-            // Reset timer
+  
             resetTimerStates();
           },
           style: 'destructive',
@@ -220,6 +115,97 @@ const handleBadgeAward = async () => {
   // Calculate total shells including shells earned during current session
   const totalShells = shells + minutesPassed;
 
+/////////////////////////BADGE STUFF /////////////////////////
+
+//   const [earnedBadges, setEarnedBadges] = useState(['Sea Shell']);
+//   const [totalStudyMinutes, setTotalStudyMinutes] = useState(0); 
+
+//   const loadTotalStudyMinutes = async () => {
+//     try {
+//       const userId = auth.currentUser?.uid;
+//       if (!userId) {
+//           console.error('User is not authenticated');
+//           return;
+//       }      
+//         const badgeDocRef = doc(db, 'profile', userId, 'badges', 'badgeData');
+//         const badgeDoc = await getDoc(badgeDocRef);
+
+//         if (badgeDoc.exists()) {
+//             const data = badgeDoc.data();
+//             setTotalStudyMinutes(data.totalMinutes || 0);
+//             setEarnedBadges(data.earnedBadges || ['Sea Shell']); // Load badges from Firestore
+//             console.log(`Loaded from Firestore: ${data.totalMinutes} minutes and badges: ${data.earnedBadges}`);
+//         } else {
+//           console.log('No badge data found. Initializing Firestore document...');
+//           await setDoc(badgeDocRef, { totalMinutes: 0, earnedBadges: ['Sea Shell'] }, { merge: true });          
+//         }
+//     } catch (error) {
+//         console.error('Error loading from Firestore:', error);
+//     }
+// };
+
+// useEffect(() => {
+//     loadTotalStudyMinutes();
+// }, []);
+
+
+// const saveTotalStudyMinutes = async (newMinutes, newBadges) => {
+//   try {
+//     const userId = auth.currentUser?.uid;
+//     if (!userId) {
+//         console.error('User is not authenticated');
+//         return;
+//     }    
+//       const badgeDocRef = doc(db, 'profile', userId, 'badges', 'badgeData');
+
+//       await updateDoc(badgeDocRef, {
+//           totalMinutes: newMinutes,
+//           earnedBadges: newBadges,
+//       });
+//       console.log(`Saved to Firestore: ${newMinutes} minutes and badges: ${newBadges}`);
+//   } catch (error) {
+//       console.error('Error saving to Firestore:', error);
+//   }
+// };
+
+// const handleBadgeAward = async () => {
+//   const sessionMinutes = Math.floor((parseInt(customTime) * 60 - secondsLeft) / 60);
+//   const updatedTotalMinutes = totalStudyMinutes + sessionMinutes;
+
+//   setTotalStudyMinutes(updatedTotalMinutes);
+
+//   let newBadges = [...earnedBadges];
+
+//   // Award badges based on cumulative total minutes
+//   if (updatedTotalMinutes >=60 && !earnedBadges.includes('Conch Shell')) {
+//       newBadges.push('Conch Shell');
+//       Alert.alert('Congratulations!', 'You earned the Conch Shell badge!');
+//   }
+//   if (updatedTotalMinutes >= 300 && !earnedBadges.includes('Starfish')) {
+//       newBadges.push('Starfish');
+//       Alert.alert('Congratulations!', 'You earned the Starfish badge!');
+//   }
+//   if (updatedTotalMinutes >= 1440 && !earnedBadges.includes('Mermaid')) {
+//       newBadges.push('Mermaid');
+//       Alert.alert('Congratulations!', 'You earned the Mermaid badge!');
+//   }
+
+//   // Save updated minutes and badges to Firestore
+//   await saveTotalStudyMinutes(updatedTotalMinutes, newBadges);
+
+//   // Update state and navigate to Achievements
+//   if (newBadges.length > earnedBadges.length) {
+//       setEarnedBadges(newBadges);
+//       navigation.navigate('Achievements', { earnedBadges: newBadges });
+//   } else {
+//       Alert.alert('Session complete!');
+//       navigation.navigate('Achievements', { earnedBadges });
+//   }
+
+//   resetTimerStates();
+
+// };
+
   return (
     <View style={styles.container}>
       {fromTasks && (
@@ -239,12 +225,11 @@ const handleBadgeAward = async () => {
         </TouchableOpacity>
       )}
 
-
       <Image source={shell} style={styles.shell} />
       <Text style={styles.taskTitle}>{taskTitle}</Text>
 
       {/* Display Total Shells */}
-      <Text style={styles.shellCount}>Total Shells: {totalShells}</Text>
+      <Text style={styles.shellCount}>Total Shells: {shells}</Text>
 
       <View style={styles.circleWrapper}>
         <Circle
@@ -262,33 +247,69 @@ const handleBadgeAward = async () => {
 
         <View style={styles.timerTextContainer}>
           <Text style={styles.timerText}>
-            {minutes}:{seconds < 10 ? `0${seconds}` : seconds}
+          {isActive
+            ? `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`
+            : `${customTime}:00`}
           </Text>
         </View>
       </View>
 
-      {!isActive && (
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Set Timer (minutes):</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            value={customTime}
-            onChangeText={(value) => setCustomTime(value)}
-            maxLength={3}
-            placeholder="25"
-          />
-        </View>
-      )}
+      {/* Timer Button */}
+      <TouchableOpacity
+        onPress={() => {
+          if (!isActive && customTime === '25') {
+            setIsPickerVisible(true);
+          } else if (!isActive) {
+            startTimer();
+          } else {
+            stopTimer();
+          }
+        }}
+        style={styles.labelContainer}
+      >
+        <Text style={styles.labelText}>
+          {isActive
+            ? 'Stop Timer'
+            : customTime === '25'
+            ? 'Set Timer'
+            : 'Start Timer'}
+        </Text>
+      </TouchableOpacity>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.customButton}
-          onPress={isActive ? stopTimer : startTimer}
-        >
-          <Text style={styles.buttonText}>{isActive ? 'Stop' : 'Start'}</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Modal for Picker */}
+      <Modal
+        visible={isPickerVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsPickerVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.pickerContainer}>
+            <Text style={styles.modalTitle}>Select Timer Duration</Text>
+            <Picker
+              selectedValue={customTime}
+              onValueChange={(itemValue) => setCustomTime(itemValue)}
+              style={styles.picker}
+            >
+              <Picker.Item label="5 minutes" value="5" />
+              <Picker.Item label="10 minutes" value="10" />
+              <Picker.Item label="15 minutes" value="15" />
+              <Picker.Item label="20 minutes" value="20" />
+              <Picker.Item label="25 minutes" value="25" />
+              <Picker.Item label="30 minutes" value="30" />
+              <Picker.Item label="45 minutes" value="45" />
+              <Picker.Item label="60 minutes" value="60" />
+              <Picker.Item label="90 minutes" value="60" />
+            </Picker>
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => setIsPickerVisible(false)}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -320,10 +341,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '50%',
   },
-  label: {
-    color: Colors.primary,
-    fontSize: 18,
-    marginBottom: 10,
+  labelContainer: {
+    backgroundColor: Colors.theme.yellow, // Transparent background
+    borderColor: Colors.theme.orange, // Use primary color for the border
+    borderWidth: 2, // Define border thickness
+    paddingVertical: 8, // Adjust vertical padding for height
+    paddingHorizontal: 20, // Adjust horizontal padding for width
+    borderRadius: 10, // Rounded corners
+    alignItems: 'center', // Center the text horizontally
+    justifyContent: 'center', // Center the text vertically
+    width: '40%', // Make it wider
+    alignSelf: 'center', // Center the button itself
+    margin: 20, // Add spacing below the button
+  },
+  labelText: {
+    fontSize: 18, // Text size
+    fontWeight: 'bold', // Bold text
+    color: Colors.theme.brown, // Use primary color for text
+    textAlign: 'center', // Center-align the text,
   },
   input: {
     height: 50,
@@ -396,6 +431,48 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#FFFFFF',
     marginBottom: 10,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+  },
+  pickerContainer: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 20,
+    alignItems: 'center',
+    elevation: 5, // Add shadow for Android
+    shadowColor: '#000', // Add shadow for iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  picker: {
+    width: '100%',
+    height: 150,
+  },
+  doneButton: {
+    marginTop: 20,
+    backgroundColor: Colors.theme.yellow,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    width: '50%',
+  },
+  doneButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.theme.brown,
   },
 });
 
