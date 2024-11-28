@@ -75,13 +75,12 @@ const TimerScreen = ({ route }) => {
           text: 'Stop Timer',
           onPress: () => {
             const minutesPassed = Math.floor((totalTimeInSeconds - secondsLeft) / 60);
-            const partialBonusShells = Math.round((minutesPassed / (totalTimeInSeconds / 60)) * 10);
   
-            setShells((prevShells) => prevShells + minutesPassed + partialBonusShells);
+            setShells((prevShells) => prevShells + minutesPassed);
   
             Alert.alert(
               'Timer Stopped',
-              `You have accrued ${minutesPassed + partialBonusShells} shells.`,
+              `You have accrued ${minutesPassed} shells.`,
               [{ text: 'OK' }]
             );
   
@@ -93,6 +92,7 @@ const TimerScreen = ({ route }) => {
       { cancelable: false }
     );
   };
+  
 
   const resetTimerStates = () => {
     setIsActive(false);
