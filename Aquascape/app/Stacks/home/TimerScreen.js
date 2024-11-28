@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert, Modal, Button } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert, Modal, Button, FlatList } from 'react-native';
 import { Circle } from 'react-native-progress';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -21,6 +21,10 @@ const TimerScreen = ({ route }) => {
   const [shells, setShells] = useState(0);
   const [totalTimeInSeconds, setTotalTimeInSeconds] = useState(1500);
   const [isPickerVisible, setIsPickerVisible] = useState(false);
+  const [isCategoryPickerVisible, setIsCategoryPickerVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('other');
+
+  const categories = ['Work', 'Personal', 'Fitness', 'Study', 'Leisure', 'Other'];
 
   useEffect(() => {
     let interval = null;
@@ -254,6 +258,24 @@ const TimerScreen = ({ route }) => {
         </View>
       </View>
 
+      {/* Pick Category Button */}
+      <TouchableOpacity
+        onPress={() => {
+          if (!isActive) {
+            setIsCategoryPickerVisible(true); 
+          }
+        }}
+        style={[
+          styles.categoryTextContainer,
+          isActive && styles.disabledCategoryButton,
+        ]}
+        disabled={isActive}
+      >
+        <Text style={[styles.categoryButtonText, isActive && styles.disabledCategoryButtonText]}>
+          {selectedCategory ? `Category: ${selectedCategory}` : 'Pick Category'}
+        </Text>
+      </TouchableOpacity>
+
       {/* Timer Button */}
       <TouchableOpacity
         onPress={() => {
@@ -265,9 +287,9 @@ const TimerScreen = ({ route }) => {
             stopTimer();
           }
         }}
-        style={styles.labelContainer}
+        style={styles.setTimerBtnContainer}
       >
-        <Text style={styles.labelText}>
+        <Text style={styles.setTimerText}>
           {isActive
             ? 'Stop Timer'
             : customTime === '25'
@@ -284,7 +306,7 @@ const TimerScreen = ({ route }) => {
         onRequestClose={() => setIsPickerVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.pickerContainer}>
+          <View style={styles.timePickerContainer}>
             <Text style={styles.modalTitle}>Select Timer Duration</Text>
             <Picker
               selectedValue={customTime}
@@ -309,6 +331,35 @@ const TimerScreen = ({ route }) => {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Modal for Category Picker */}
+      <Modal
+        visible={isCategoryPickerVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsCategoryPickerVisible(false)}
+      >
+        <View style={styles.categoryModalContainer}>
+          <View style={styles.categoryPickerContainer}>
+            <Text style={styles.categoryModalTitle}>Select a Category</Text>
+            <FlatList
+              data={categories}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.categoryModalButtons}
+                  onPress={() => {
+                    setSelectedCategory(item);
+                    setIsCategoryPickerVisible(false);
+                  }}
+                >
+                  <Text style={styles.categoryButtonText}>{item}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>  
       </Modal>
     </View>
   );
@@ -341,24 +392,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '50%',
   },
-  labelContainer: {
-    backgroundColor: Colors.theme.yellow, // Transparent background
-    borderColor: Colors.theme.orange, // Use primary color for the border
-    borderWidth: 2, // Define border thickness
-    paddingVertical: 8, // Adjust vertical padding for height
-    paddingHorizontal: 20, // Adjust horizontal padding for width
-    borderRadius: 10, // Rounded corners
-    alignItems: 'center', // Center the text horizontally
-    justifyContent: 'center', // Center the text vertically
-    width: '40%', // Make it wider
-    alignSelf: 'center', // Center the button itself
-    margin: 20, // Add spacing below the button
+  setTimerBtnContainer: {
+    backgroundColor: Colors.theme.yellow, 
+    borderColor: Colors.theme.orange,
+    borderWidth: 2, 
+    paddingVertical: 8, 
+    paddingHorizontal: 20, 
+    borderRadius: 10, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    width: '40%', 
+    alignSelf: 'center',
   },
-  labelText: {
-    fontSize: 18, // Text size
-    fontWeight: 'bold', // Bold text
-    color: Colors.theme.brown, // Use primary color for text
-    textAlign: 'center', // Center-align the text,
+  setTimerText: {
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: Colors.theme.brown, 
+    textAlign: 'center', 
   },
   input: {
     height: 50,
@@ -436,16 +486,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+    backgroundColor: 'rgba(0, 0, 0, 0.8)', 
   },
-  pickerContainer: {
+  timePickerContainer: {
     width: '80%',
     backgroundColor: '#fff',
     borderRadius: 15,
     padding: 20,
     alignItems: 'center',
-    elevation: 5, // Add shadow for Android
-    shadowColor: '#000', // Add shadow for iOS
+    elevation: 5, 
+    shadowColor: '#000', 
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -461,18 +511,92 @@ const styles = StyleSheet.create({
     height: 150,
   },
   doneButton: {
-    marginTop: 20,
+    marginTop: 25,
     backgroundColor: Colors.theme.yellow,
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: 'center',
     width: '50%',
+    borderColor: Colors.theme.orange,
+    borderWidth: 3,
   },
   doneButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.theme.brown,
+  },
+  categoryModalContainer: {
+    flex: 1, 
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center', 
+  },
+  categoryPickerContainer: {
+    backgroundColor: Colors.theme.yellow, 
+    borderColor: Colors.theme.orange,
+    borderWidth: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 10, 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    width: '80%', 
+    alignSelf: 'center',
+  },
+  categoryModalTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  categoryModalButtons: {
+    backgroundColor: Colors.theme.yellow,
+    padding: 10,
+    borderRadius: 10,
+    width: 150,
+    alignItems: 'center',
+    borderColor: Colors.theme.orange,
+    borderWidth: 3,
+    margin: 5,
+  },
+  categoryTextContainer: {
+    backgroundColor: Colors.theme.yellow, 
+    borderColor: Colors.theme.orange,
+    borderWidth: 2, 
+    paddingVertical: 8, 
+    paddingHorizontal: 20, 
+    borderRadius: 10, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    width: '60%',
+    alignSelf: 'center', 
+    margin: 20,
+  },
+  categoryButtonText: {
+    color: Colors.theme.brown,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  doneCategoryButton: {
+    marginTop: 15,
+    backgroundColor: '#FF9800',
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+    width: '100%',
+  },
+  doneCategoryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  disabledCategoryButton: {
+    backgroundColor: '#ccc',
+    borderColor: '#999', 
+  },
+  disabledCategoryButtonText: {
+    color: '#666',
   },
 });
 
