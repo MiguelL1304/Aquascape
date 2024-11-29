@@ -138,7 +138,9 @@ const AquariumScreen = ({ navigation }) => {
           <StorageMenu />
         </BottomSheetModal>
       </View>
+      
     </BottomSheetModalProvider>
+
   );
 };
 
