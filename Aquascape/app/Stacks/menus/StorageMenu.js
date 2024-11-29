@@ -15,7 +15,7 @@ const imageMap = {
   "Goldfish.gif": require("../../../assets/fish/Goldfish.gif"),
 };
 
-const StorageMenu = () => {
+const StorageMenu = ({ refreshAquarium }) => {
   const [storageFish, setStorageFish] = useState([]);
   const [aquariumFish, setAquariumFish] = useState([]);
 
@@ -95,6 +95,8 @@ const StorageMenu = () => {
   
           await updateDoc(aquariumDocRef, { storageFish: updatedStorageFish });
           setStorageFish(updatedStorageFish);
+
+          refreshAquarium();
 
           // Update local state
           setAquariumFish(updatedFishArray);
