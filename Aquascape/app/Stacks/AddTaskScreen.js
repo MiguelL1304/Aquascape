@@ -8,15 +8,16 @@ import { Calendar } from 'react-native-calendars';
 import Colors from '../../constants/Colors';
 import Elements from '../../constants/Elements';
 
-const categories = ['Work', 'Personal', 'Lifestyle', 'Others']; // Categories
+const categories = ['Work', 'Personal', 'Fitness', 'Study', 'Leisure', 'Other']; // Categories
+const durationOptions = Array.from({ length: 24 }, (_, i) => (i + 1) * 5); // 5-minute intervals up to 120 minutes
 
 const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
   const [taskTitle, setTaskTitle] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null); // Default to the first category
-  const [shouldReoccur, setShouldReoccur] = useState(null); // Whether the task should reoccur
-  const [recurrence, setRecurrence] = useState(null); // Default recurrence
+  const [recurrence, setRecurrence] = useState('Never'); // Default recurrence
   const [calendarVisible, setCalendarVisible] = useState(false); // State to control calendar visibility
   const [selectedDates, setSelectedDates] = useState({}); // Store selected dates
+  const [duration, setDuration] = useState(null); // Default duration in minutes
 
   const handleAddTask = () => {
     if (!taskTitle.trim()) return; // Prevent empty titles or duration
@@ -25,17 +26,19 @@ const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
       title: taskTitle,
       completed: false,
       category: selectedCategory,
-      recurrence: shouldReoccur === 'Yes' ? recurrence : 'None',
-      selectedDates: shouldReoccur === 'Yes' && recurrence === 'Custom' ? selectedDates : [], // Save selected dates if recurrence is Custom
+      recurrence: recurrence,
+      selectedDates: recurrence === 'Custom' ? selectedDates : [], // Save selected dates if recurrence is Custom
+      duration: duration, // Add the duration to the task
     };
+
     addTaskCallback(newTask); // Call the callback to add the task
 
     // Resets the input fields and pickers
     setTaskTitle('');
     setSelectedCategory(null);
-    setShouldReoccur(null);
-    setRecurrence(null);
+    setRecurrence('Never');
     setSelectedDates({});
+    setDuration(null);
 
     closeBottomSheet(); // Close the bottom sheet 
   };
@@ -44,9 +47,9 @@ const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
     // Reset input fields and pickers
     setTaskTitle('');
     setSelectedCategory(null);
-    setShouldReoccur(null);
-    setRecurrence(null);
+    setRecurrence('Never');
     setSelectedDates({});
+    setDuration(null);
 
     closeBottomSheet(); // Close the bottom sheet when cancelled
   };
@@ -106,35 +109,13 @@ const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
   </View>
 
       <View style={styles.pickerContainer}>
-        <Text style={styles.label}>Reoccur ?</Text>
-        {Platform.OS === 'ios' ? (
-          <TouchableOpacity
-            onPress={() => showActionSheet(['Never', 'Yes'], setShouldReoccur)}
-            style={styles.popupButton}
-          >
-            <Text>{shouldReoccur || "Never"}</Text>
-          </TouchableOpacity>
-        ) : (
-        <Picker
-          style={styles.picker}
-          selectedValue={shouldReoccur}
-          onValueChange={setShouldReoccur}
-          >
-            <Picker.Item label='Never' value='Never' />
-            <Picker.Item label='Yes' value='Yes' />
-          </Picker>
-        )}
-      </View>
-
-      {shouldReoccur === 'Yes' && (
-      <View style={styles.pickerContainer}>
         <Text style={styles.label}>Recurrence:</Text>
         {Platform.OS === 'ios' ? (
             <TouchableOpacity
-              onPress={() => showActionSheet(['Daily', 'Weekly', 'Monthly', 'Custom'], setRecurrence)}
+              onPress={() => showActionSheet(['Never', 'Daily', 'Weekly', 'Monthly', 'Custom'], setRecurrence)}
               style={styles.popupButton}
             >
-              <Text>{recurrence || "Select Recurrence..."}</Text>
+              <Text>{recurrence || "Never"}</Text>
             </TouchableOpacity>
           ) : (
       <Picker
@@ -142,18 +123,17 @@ const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
         selectedValue={recurrence}
         onValueChange={setRecurrence}
       >
-        <Picker.Item label="Select Recurrence..." value={null} />
+        <Picker.Item label="Never" value="Never" />
         <Picker.Item label="Daily" value="Daily" />
         <Picker.Item label="Weekly" value="Weekly" />
         <Picker.Item label="Monthly" value="Monthly" />
         <Picker.Item label="Custom" value="Custom" />
       </Picker>
       )}
-    </View>
-    )}
+        </View>
 
       {/* Display Calendar for Custom Recurrence */}
-      {recurrence === 'Custom' && shouldReoccur === 'Yes' && (
+      {recurrence === 'Custom' && (
         <View style={styles.calendarContainer}>
           <Text style={styles.label}>Select Dates:</Text>
           <Calendar
@@ -162,6 +142,29 @@ const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
           />
         </View>
       )}
+
+      <View style={styles.pickerContainer}>
+        <Text style={styles.label}>Duration (in mins):</Text>
+        {Platform.OS === 'ios' ? (
+          <TouchableOpacity
+            onPress={() => showActionSheet([ 'Select duration', ...durationOptions.map(String)], (value) => setDuration(Number(value)))}
+            style={styles.popupButton}
+          >
+            <Text>{duration === null ? 'Select duration' : `${duration} minutes`}</Text>
+          </TouchableOpacity>
+        ) : (
+          <Picker
+            style={styles.picker}
+            selectedValue={duration}
+            onValueChange={setDuration}
+          >
+            <Picker.Item label="Select duration" value={null} />
+            {durationOptions.map((minute) => (
+              <Picker.Item key={minute} label={`${minute} minutes`} value={minute} />
+            ))}
+          </Picker>
+        )}
+      </View>
 
       <View style={styles.buttonContainer}>
       <TouchableOpacity style={Elements.mainButton} onPress={handleAddTask}>
