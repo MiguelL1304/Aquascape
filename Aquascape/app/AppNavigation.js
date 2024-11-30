@@ -19,6 +19,7 @@ import TasksScreen from './Stacks/home/TasksScreen';
 import AddTaskScreen from './Stacks/AddTaskScreen';
 import TimerScreen from './Stacks/home/TimerScreen';
 import AchievementsScreen from './Stacks/AchievementsScreen';
+import BadgesScreen from './Stacks/BadgesScreen';
 
 
 const Drawer = createDrawerNavigator();
@@ -51,7 +52,22 @@ function DrawerNavigation() {
           })}
         />
       
-      <Drawer.Screen
+      {/* <Drawer.Screen
+          name="Badges"
+          component={BadgesScreen}
+          options={({ navigation }) => ({
+            headerTransparent: true,
+            headerTitle: "",
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => navigation.openDrawer()}>
+                <Icon name="menu" size={30} style={{ marginLeft: 10 }} />
+              </TouchableOpacity>
+            ),
+            
+          })}
+        /> */}
+
+        <Drawer.Screen
           name="Achievements"
           component={AchievementsScreen}
           options={({ navigation }) => ({
@@ -132,6 +148,16 @@ export default function AppNavigation() {
         <Stack.Screen
           name="TimerScreen"
           component={TimerScreen}
+          options={{ headerShown: false}}
+        />
+        {/* <Stack.Screen
+          name="BadgesScreen"
+          component={BadgesScreen}
+          options={{ headerShown: false}}
+        /> */}
+        <Stack.Screen
+          name="Achievements"
+          component={AchievementsScreen}
           options={{ headerShown: false}}
         />
       </Stack.Navigator>

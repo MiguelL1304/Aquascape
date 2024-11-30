@@ -93,14 +93,36 @@ const TasksScreen = ({ navigation }) => {
     setBottomSheetVisible(false);
   };
 
-  const toggleTaskCompletion = (taskId) => {
-    setTasks((prevTasks) => {
-      const updatedTasksForDate = prevTasks[selectedDate].map((task) =>
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    );
-    return { ...prevTasks, [selectedDate]: updatedTasksForDate };
-  });
-};
+  const toggleTaskCompletion = async (taskId) => {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return;
+  
+    const taskToUpdate = tasks[selectedDate].find((task) => task.id === taskId);
+  
+    if (taskToUpdate) {
+      const isCompleted = !taskToUpdate.completed; // Toggle completion
+  
+      // Update tasks locally
+      setTasks((prevTasks) => {
+        const updatedTasksForDate = prevTasks[selectedDate].map((task) =>
+          task.id === taskId ? { ...task, completed: isCompleted } : task
+        );
+        return { ...prevTasks, [selectedDate]: updatedTasksForDate };
+      });
+  
+      // Update completed tasks count in Firestore
+      if (isCompleted) {
+        const userProfileRef = doc(firestoreDB, 'profile', userId);
+        const userProfileSnap = await getDoc(userProfileRef);
+  
+        const currentCompletedTasks = userProfileSnap.data()?.completedTasks || 0;
+        await updateDoc(userProfileRef, {
+          completedTasks: currentCompletedTasks + 1,
+        });
+      }
+    }
+  };
+  
 
   const toggleSelectTask = (taskId) => {
     setSelectedTasks((prevSelectedTasks) => ({
