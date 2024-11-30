@@ -10,7 +10,7 @@ const defaultProfilePic = require('../../assets/starfish.png'); // Placeholder p
 
 const screenWidth = Dimensions.get('window').width;
 
-const SettingsScreen = ({ navigation }) => {
+const ProfileScreen = ({ navigation }) => {
   const [userInfo, setUserInfo] = useState(null);
 
   useEffect(() => {
@@ -51,41 +51,43 @@ const SettingsScreen = ({ navigation }) => {
   const { firstName, email, seashells, aquarium } = userInfo;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Profile Picture and Name */}
-      <View style={styles.profileHeader}>
-        <Image
-          source={defaultProfilePic} // Replace with dynamic profile pic if available
-          style={styles.profilePicture}
-        />
-        <Text style={styles.profileName}>{firstName}</Text>
-        <Text style={styles.profileEmail}>{email}</Text>
-      </View>
+    <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <View style={styles.mainContent}>
+        {/* Profile Picture and Name */}
+        <View style={styles.profileHeader}>
+          <Image
+            source={defaultProfilePic} // Replace with dynamic profile pic if available
+            style={styles.profilePicture}
+          />
+          <Text style={styles.profileName}>{firstName}</Text>
+          <Text style={styles.profileEmail}>{email}</Text>
+        </View>
 
-      {/* Seashells */}
-      <View style={styles.infoContainer}>
-        <Text style={styles.infoLabel}>Seashells:</Text>
-        <Text style={styles.infoValue}>{seashells}</Text>
-      </View>
+        {/* Seashells */}
+        <View style={styles.infoContainer}>
+          <Text style={styles.infoLabel}>Seashells:</Text>
+          <Text style={styles.infoValue}>{seashells}</Text>
+        </View>
 
-      {/* Aquarium Overview */}
-      <View style={styles.infoContainer}>
-        <Text style={styles.infoLabel}>Aquarium Fish:</Text>
-        <Text style={styles.infoValue}>{aquarium?.fish?.length || 0}</Text>
-      </View>
+        {/* Aquarium Overview */}
+        <View style={styles.infoContainer}>
+          <Text style={styles.infoLabel}>Aquarium Fish:</Text>
+          <Text style={styles.infoValue}>{aquarium?.fish?.length || 0}</Text>
+        </View>
 
-      {/* Achievements */}
-      <View style={styles.achievementsContainer}>
-        <Text style={styles.sectionTitle}>Achievements</Text>
-        {aquarium?.achievements?.map((achievement, index) => (
-          <View key={index} style={styles.achievementItem}>
-            <Text style={styles.achievementName}>{achievement.name}</Text>
-            <Text style={styles.achievementDescription}>{achievement.description}</Text>
-          </View>
-        ))}
-        {aquarium?.achievements?.length === 0 && (
-          <Text style={styles.noAchievements}>No achievements unlocked yet.</Text>
-        )}
+        {/* Achievements */}
+        <View style={styles.achievementsContainer}>
+          <Text style={styles.sectionTitle}>Achievements</Text>
+          {aquarium?.achievements?.map((achievement, index) => (
+            <View key={index} style={styles.achievementItem}>
+              <Text style={styles.achievementName}>{achievement.name}</Text>
+              <Text style={styles.achievementDescription}>{achievement.description}</Text>
+            </View>
+          ))}
+          {aquarium?.achievements?.length === 0 && (
+            <Text style={styles.noAchievements}>No achievements unlocked yet.</Text>
+          )}
+        </View>
       </View>
 
       {/* Buttons */}
@@ -95,16 +97,33 @@ const SettingsScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
     </ScrollView>
+
+
   );
 };
 
-export default SettingsScreen;
+export default ProfileScreen;
 
 const styles = StyleSheet.create({
-  container: {
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "space-between",
     backgroundColor: Colors.background,
+  },
+  mainContent: {
+    flex: 1,
     padding: 20,
+    marginTop: 20,
+  },
+  buttonContainer: {
     alignItems: "center",
+    marginBottom: 20, // To leave space at the bottom
+  },
+  container: {
+    flex: 1,
+    padding: 20,
+    justifyContent: "space-between",
+    backgroundColor: Colors.background,
   },
   profileHeader: {
     alignItems: "center",
@@ -170,11 +189,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     fontStyle: "italic",
-  },
-  buttonContainer: {
-    marginTop: 30,
-    width: "100%",
-    alignItems: "center",
   },
   button: {
     width: "70%",
