@@ -6,6 +6,9 @@ import { CheckBox } from 'react-native-elements';
 import AddTaskScreen from '../AddTaskScreen';
 import BottomSheet from '@gorhom/bottom-sheet';
 
+import { doc, getDoc } from "firebase/firestore";
+import { auth, firestoreDB } from "../../../firebase/firebase";
+
 //Styling
 import Elements from '../../../constants/Elements';
 import Colors from '../../../constants/Colors';
@@ -72,6 +75,55 @@ const TasksScreen = ({ navigation }) => {
   const handleDateChange = useCallback((date) => {
     setSelectedDate(date);
   }, []);
+
+  //Firebase
+
+  const fetchTasks = async (month) => {
+    const user = auth.currentUser;
+
+    if (user) {
+      try {
+        const uid = user.uid;
+        const tasksDocRef = doc(firestoreDB, "profile", uid, "tasks", month);
+        const tasksSnap = await getDoc(tasksDocRef);
+
+        if (tasksSnap.exists()) {
+          const tasksData = tasksSnap.data();
+          return tasksData; // Tasks grouped by weeks
+        } else {
+          console.log(`No tasks found for the month ${month}.`);
+          return {};
+        }
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        throw new Error("Could not fetch tasks.");
+      }
+    } else {
+      throw new Error("User not authenticated.");
+    }
+  };
+
+  const uploadTasks = async (month, tasksByWeek) => {
+    const user = auth.currentUser;
+
+    if (user) {
+      try {
+        const uid = user.uid;
+        const tasksDocRef = doc(firestoreDB, "profile", uid, "tasks", month);
+
+        // Update the tasks in Firestore
+        await updateDoc(tasksDocRef, tasksByWeek);
+
+        console.log(`Tasks for ${month} uploaded successfully.`);
+      } catch (error) {
+        console.error("Error uploading tasks:", error);
+        throw new Error("Could not upload tasks.");
+      }
+    } else {
+      throw new Error("User not authenticated.");
+    }
+  };
+
 
   const addTask = (newTask) => {
     if (!newTask) return;
