@@ -6,7 +6,7 @@ import { CheckBox } from 'react-native-elements';
 import AddTaskScreen from '../AddTaskScreen';
 import BottomSheet from '@gorhom/bottom-sheet';
 
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, firestoreDB } from "../../../firebase/firebase";
 
 //Styling
@@ -123,6 +123,57 @@ const TasksScreen = ({ navigation }) => {
       throw new Error("User not authenticated.");
     }
   };
+
+  const createTasksForMonthAndNext = async (year, month) => {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("User not authenticated.");
+    }
+
+    const uid = user.uid;
+
+    const formatMonthKey = (year, month) => {
+      return `${year}-${String(month).padStart(2, "0")}`; // Format as "YYYY-MM"
+    };
+
+    const checkMonth = async (year, month) => {
+      const monthKey = formatMonthKey(year, month);
+      const monthTasksRef = doc(firestoreDB, "profile", uid, "tasks", monthKey);
+
+      // Check if the document exists
+      const monthSnap = await getDoc(monthTasksRef);
+
+      if (!monthSnap.exists()) {
+        // Predefined week keys
+        const weeksData = {
+          "1-7": [],
+          "8-14": [],
+          "15-21": [],
+          "22-28": [],
+          "29-end": [],
+        };
+
+        // Create the document for the month
+        await setDoc(monthTasksRef, weeksData);
+        console.log(`Created tasks document for ${monthKey}`);
+      } else {
+        console.log(`Tasks document for ${monthKey} already exists.`);
+      }
+    };
+
+    // Check and create the current month
+    await checkAndCreateMonth(year, month);
+
+    // Calculate the next month and year
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+
+    // Check and create the next month
+    await checkAndCreateMonth(nextYear, nextMonth);
+  };
+
+
+
 
 
   const addTask = (newTask) => {
