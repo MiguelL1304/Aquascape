@@ -8,7 +8,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import shell from '../../../assets/shell.png';
 import fisherman from '../../../assets/Fisherman.gif';
 import Colors from '../../../constants/Colors';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { firestoreDB as db, auth } from '../../../firebase/firebase';
 
 const TimerScreen = ({ route }) => {
@@ -29,34 +29,56 @@ const TimerScreen = ({ route }) => {
   useEffect(() => {
     let interval = null;
   
+    const fetchShellsRealtime = () => {
+      try {
+        const userId = auth.currentUser?.uid;
+        if (!userId) {
+          throw new Error('User not authenticated.');
+        }
+  
+        const profileDocRef = doc(db, 'profile', userId);
+        const unsubscribe = onSnapshot(profileDocRef, (docSnapshot) => {
+          if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            setShells(data.seashells || 0);
+          }
+        });
+  
+        return unsubscribe; 
+      } catch (error) {
+        console.error('Error fetching seashells in real-time:', error);
+      }
+    };
+  
+    const unsubscribe = fetchShellsRealtime();
+  
     if (isActive && secondsLeft > 0) {
       interval = setInterval(() => {
         setSecondsLeft((seconds) => seconds - 1);
       }, 1000);
     } else if (secondsLeft === 0 && isActive) {
       clearInterval(interval);
-      
-      // Accrue full session shells
+  
       const timeInMinutes = parseInt(customTime, 10);
       const bonusShells = 10;
       const totalSessionShells = timeInMinutes + bonusShells;
   
-      setShells((prevShells) => prevShells + totalSessionShells);
-
       handleTimerComplete(totalSessionShells);
   
-      Alert.alert(
-        'Session Complete!',
-        `You have accrued ${totalSessionShells} shells.`,
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Session Complete!', `You have accrued ${totalSessionShells} shells.`, [
+        { text: 'OK' },
+      ]);
   
       resetTimerStates();
     }
   
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (unsubscribe) unsubscribe(); 
+    };
   }, [isActive, secondsLeft]);
-
+  
+  
 
   const startTimer = () => {
     const timeInMinutes = parseInt(customTime, 10) || 25;
@@ -72,32 +94,25 @@ const TimerScreen = ({ route }) => {
       'Are you sure you want to stop?',
       'If you stop the timer now, you will miss out on the bonus 10 shells :(',
       [
-        {
-          text: 'Cancel',
-          onPress: () => {},
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Stop Timer',
+          style: 'destructive',
           onPress: () => {
             const minutesPassed = Math.floor((totalTimeInSeconds - secondsLeft) / 60);
   
-            setShells((prevShells) => prevShells + minutesPassed);
-  
-            Alert.alert(
-              'Timer Stopped',
-              `You have accrued ${minutesPassed} shells.`,
-              [{ text: 'OK' }]
-            );
+            const updatedShellCount = shells + minutesPassed;
+            setShells(updatedShellCount); // Update local state
+            updateSeashells(minutesPassed); // Persist changes to Firestore
   
             resetTimerStates();
           },
-          style: 'destructive',
         },
       ],
       { cancelable: false }
     );
   };
+  
   
 
   const resetTimerStates = () => {
@@ -123,7 +138,6 @@ const TimerScreen = ({ route }) => {
 
   async function updateSeashells(earnedShells) {
     try {
-      // Get the current user's ID from Firebase Auth
       const currentUser = auth.currentUser;
   
       if (!currentUser) {
@@ -131,23 +145,17 @@ const TimerScreen = ({ route }) => {
         return;
       }
   
-      const userId = currentUser.uid; // Extract the user ID
-  
-      // Reference to the user's profile document
+      const userId = currentUser.uid;
       const profileDocRef = doc(db, "profile", userId);
-  
-      // Fetch the user's current profile
       const profileDoc = await getDoc(profileDocRef);
   
       if (profileDoc.exists()) {
-        const currentSeashells = profileDoc.data().seashells || 0; // Default to 0 if seashells field is missing
+        const currentSeashells = profileDoc.data().seashells || 0;
   
-        // Increment the seashells value
         await updateDoc(profileDocRef, {
           seashells: currentSeashells + earnedShells,
         });
       } else {
-        // If the profile doesn't exist, create it with the seashells field
         await setDoc(profileDocRef, { seashells: earnedShells });
       }
   
@@ -159,8 +167,10 @@ const TimerScreen = ({ route }) => {
 
   const handleTimerComplete = async (earnedShells) => {
     try {
-      console.log("Earned shells:", earnedShells); // Debug earned shells
-      await updateSeashells(earnedShells); // Pass the shells directly to Firestore
+      //console.log("Earned shells:", earnedShells); 
+      const updatedShellCount = shells + earnedShells;
+      setShells(updatedShellCount);
+      await updateSeashells(earnedShells); 
     } catch (error) {
       console.error("Error in handleTimerComplete:", error);
     }
@@ -185,11 +195,15 @@ const TimerScreen = ({ route }) => {
         </TouchableOpacity>
       )}
 
-      <Image source={shell} style={styles.shell} />
+      <View style={styles.shellContainer}>
+        <Text style={styles.shellCount}>{shells}</Text>
+        <Image source={shell} style={styles.shell} />
+      </View>
+      
       <Text style={styles.taskTitle}>{taskTitle}</Text>
 
       {/* Display Total Shells */}
-      <Text style={styles.shellCount}>Total Shells: {shells}</Text>
+      {/* <Text style={styles.shellCount}>Total Shells: {shells}</Text> */}
 
       <View style={styles.circleWrapper}>
         <Circle
@@ -269,6 +283,8 @@ const TimerScreen = ({ route }) => {
               onValueChange={(itemValue) => setCustomTime(itemValue)}
               style={styles.picker}
             >
+              <Picker.Item label="2 minutes" value="2" /> 
+              {/* 2 mins is purely for testing */}
               <Picker.Item label="5 minutes" value="5" />
               <Picker.Item label="10 minutes" value="10" />
               <Picker.Item label="15 minutes" value="15" />
@@ -417,14 +433,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: 30,
   },
-  shell: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    width: 50,
-    height: 50,
-    marginTop: 10,
-  },
   fisherman: {
     position: 'absolute',
     width: 220,
@@ -432,11 +440,6 @@ const styles = StyleSheet.create({
     left: 50,
     top: 5,
     resizeMode: 'contain',
-  },
-  shellCount: {
-    fontSize: 18,
-    color: '#FFFFFF',
-    marginBottom: 10,
   },
   modalContainer: {
     flex: 1,
@@ -554,6 +557,25 @@ const styles = StyleSheet.create({
   disabledCategoryButtonText: {
     color: '#666',
   },
+  shellContainer: {
+    position: 'absolute',
+    top: 40, 
+    right: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+  },
+  shell: {
+    width: 50, 
+    height: 50,
+    marginLeft: 8,
+  },
+  shellCount: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: 'bold',
+    marginTop: 10,
+  },
+  
 });
 
 export default TimerScreen;
