@@ -10,7 +10,7 @@ import LoginScreen from './Stacks/LoginScreen';
 import SignupScreen from './Stacks/SignupScreen';
 import ForgetPassword from './Stacks/ForgetPassword';
 import HomeTabs from './Stacks/home/HomeTabs';
-import SettingsScreen from './Stacks/SettingsScreen';
+import ProfileScreen from './Stacks/ProfileScreen';
 import SplashScreen from './Stacks/SplashScreen';
 import TestScreen from './Stacks/TestScreen';
 import StoreScreen from './Stacks/StoreScreen';
@@ -39,8 +39,8 @@ function DrawerNavigation() {
         }} 
       />
       <Drawer.Screen
-          name="Settings"
-          component={SettingsScreen}
+          name="Profile"
+          component={ProfileScreen}
           options={({ navigation }) => ({
             headerTransparent: true, // Make the header transparent
             // Add the drawer button on the settings screen
