@@ -17,36 +17,16 @@ import Colors from '../../../constants/Colors';
 const categoryColors = {
   Work: '#f08080',
   Personal: '#ffb6c1',
-  Lifestyle: '#90ee90',
-  Others: '#d8bfd8',
+  Fitness: '#d8bfd8',
+  Study: '#90ee90',
+  Leisure: '#a7c7e7',
+  Other: '#a9a9a9',
 };
-
-//Calculation of visible weeks
-// const getStartOfWeek = (date) => {
-//   const d = new Date(date);
-//   const day = d.getDay();
-//   const diff = d.getDate() - day;
-//   return new Date(d.setDate(diff));
-// };
-
-// const getEndOfWeek = (date) => {
-//   const d = new Date(date);
-//   const day = d.getDay();
-//   const diff = 6 - day;
-//   return new Date(d.setDate(d.getDate() + diff));
-// };
 
 // Calculate min and max dates
 const getMinMaxDates = () => {
-  const minDate = new Date(2024, 9, 1);
-  const maxDate = new Date(2024, 11, 31);
-  // const currentDate = new Date();
-  // const twoWeeksBefore = new Date(currentDate);
-  // twoWeeksBefore.setDate(currentDate.getDate() - 14);
-  // const minDate = getStartOfWeek(twoWeeksBefore);
-  // const oneMonthAfter = new Date(currentDate);
-  // oneMonthAfter.setMonth(currentDate.getMonth() + 1);
-  // const maxDate = getEndOfWeek(oneMonthAfter);
+  const minDate = new Date(2024, 11, 1);
+  const maxDate = new Date(2024, 12, 31);
 
   return {
     minDate: minDate.toISOString().split('T')[0],
@@ -60,17 +40,27 @@ const TasksScreen = ({ navigation }) => {
   );
   const [tasks, setTasks] = useState({});
   const [newTask, setNewTask] = useState('');
-  const categories = ['Work', 'Personal', 'Lifestyle', 'Others'];
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
   const sheetRef = useRef(null);
   const [selectedTasks, setSelectedTasks] = useState({});
   const { minDate, maxDate } = getMinMaxDates();
 
   const markedDates = useMemo(() => {
-    return {
+    const marked = {
       [selectedDate]: { selected: true, selectedColor: Colors.primary }
     };
-  }, [selectedDate]);
+
+    // Loop through tasks to mark recurring ones
+    Object.keys(tasks).forEach((date) => {
+      tasks[date].forEach((task) => {
+        if (task.recurrence !== 'None') {
+          marked[date] = { ...marked[date], marked: true, dotColor: 'black' };
+        }
+      });
+    });
+
+    return marked;
+  }, [selectedDate, tasks]);
 
   const handleDateChange = useCallback((date) => {
     setSelectedDate(date);
@@ -178,6 +168,75 @@ const TasksScreen = ({ navigation }) => {
 
   const addTask = (newTask) => {
     if (!newTask) return;
+
+    const recurrenceDate = new Date(selectedDate);
+
+    if (newTask.recurrence === 'Daily') {
+    const dailyDates = [];
+    for (let i = 0; i < 60; i++) { // Add tasks for the next 60 days
+      const dailyDate = new Date(recurrenceDate);
+      dailyDate.setDate(dailyDate.getDate() + i);
+      dailyDates.push(dailyDate.toISOString().split('T')[0]);
+    }
+    dailyDates.forEach((date) => {
+      setTasks((prevTasks) => {
+        const updatedTasks = {
+          ...prevTasks,
+          [date]: [...(prevTasks[date] || []), newTask],
+        };
+        return updatedTasks;
+      });
+    });
+  } 
+  else if (newTask.recurrence === 'Weekly') {
+    const weeklyDates = [];
+    for (let i = 0; i < 5; i++) { // Add tasks for the next 5 weeks
+      const weeklyDate = new Date(recurrenceDate);
+      weeklyDate.setDate(weeklyDate.getDate() + i * 7);
+      weeklyDates.push(weeklyDate.toISOString().split('T')[0]);
+    }
+    weeklyDates.forEach((date) => {
+      setTasks((prevTasks) => {
+        const updatedTasks = {
+          ...prevTasks,
+          [date]: [...(prevTasks[date] || []), newTask],
+        };
+        return updatedTasks;
+      });
+    });
+  } 
+  else if (newTask.recurrence === 'Monthly') {
+    const monthlyDates = [];
+    for (let i = 0; i < 2; i++) { // Add tasks for the next 2 months
+      const nextMonth = new Date(recurrenceDate);
+      nextMonth.setMonth(nextMonth.getMonth() + i);
+      monthlyDates.push(nextMonth.toISOString().split('T')[0]);
+    }
+    monthlyDates.forEach((date) => {
+      setTasks((prevTasks) => {
+        const updatedTasks = {
+          ...prevTasks,
+          [date]: [...(prevTasks[date] || []), newTask],
+        };
+        return updatedTasks;
+      });
+    });
+  } 
+  else if (newTask.recurrence === 'Custom' && Object.keys(newTask.selectedDates).length > 0) {
+    // Custom recurrence
+    Object.keys(newTask.selectedDates).forEach((date) => {
+      setTasks((prevTasks) => {
+        // If the date already has tasks, append the new task, otherwise initialize with an array
+        const updatedTasks = {
+          ...prevTasks,
+          [date]: [...(prevTasks[date] || []), newTask],
+        };
+        return updatedTasks;
+      });
+    });
+  } 
+  else {
+    // If no recurrence, add the task to the selected date
     setTasks((prevTasks) => {
       const updatedTasks = {
         ...prevTasks,
@@ -185,9 +244,10 @@ const TasksScreen = ({ navigation }) => {
       };
       return updatedTasks;
     });
-    // Close the bottom sheet after adding the task
-    closeBottomSheet();
-  };
+  }
+
+  closeBottomSheet(); // Close the bottom sheet after adding the task
+};
 
   const closeBottomSheet = () => {
     if(sheetRef.current) {
@@ -267,14 +327,12 @@ const TasksScreen = ({ navigation }) => {
       <View style={styles.calendarContainer}>
         <ExpandableCalendar
           style={styles.calendar}
-          minDate={minDate}
-          maxDate={maxDate}
           onDayPress={(day) => setSelectedDate(day.dateString)}
           markedDates={markedDates}
           disableWeekScroll={true}
           allowSelectionOutOfRange={false}
-          pastScrollRange={2}
-          futureScrollRange={2}
+          pastScrollRange={1}
+          futureScrollRange={1}
           theme={{
             todayTextColor: Colors.primary,
             selectedDayBackgroundColor: Colors.primary,
@@ -345,10 +403,21 @@ const TasksScreen = ({ navigation }) => {
                               (task.completed || selectedTasks[task.id]) && styles.taskCompleted
                             ]}
                           >
-                            {task.title}
+                            {task.title}{' '} 
+                            {task.duration ? (
+                              <Text style={[
+                                styles.taskDuration,
+                                (task.completed || selectedTasks[task.id]) && styles.taskDurationSelected
+                              ]}
+                              >
+                              ({task.duration} mins)
+                            </Text>
+                            ) : (
+                              ''
+                            )}
                           </Text>
                           <Text style={styles.taskRecurrence}>
-                            {task.recurrence !== 'None' ? task.recurrence : ''}
+                            {task.recurrence !== 'None' && task.recurrence !== 'Never' ? task.recurrence : ''}
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -363,7 +432,9 @@ const TasksScreen = ({ navigation }) => {
               maxToRenderPerBatch={5}
             />
           ) : (
-            <Text>No tasks for this day.</Text>
+            <Text style={styles.emptyTasksMsg}>
+              No tasks for this day.
+            </Text>
           )}
         </View>
 
@@ -413,7 +484,7 @@ const styles = StyleSheet.create({
   todoTitle: {
     fontSize: 18,
     marginTop: 20,
-    marginBottom: 20,
+    marginBottom: 10,
     textAlign: 'center',
   },
   addButton: {
@@ -437,6 +508,12 @@ const styles = StyleSheet.create({
   disabledButtonText: {
     color: 'white',
   },
+  emptyTasksMsg: {
+    textAlign: 'center',
+    marginTop: 56,
+    fontSize: 48,
+    color: 'lightgray', 
+  },
   taskItemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -452,7 +529,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   taskItem: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
     color: 'white',
     flexShrink: 1,
@@ -465,6 +542,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'white',
     fontStyle: 'italic',
+  },
+  taskDuration: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: 'white',
+  },
+  taskDurationSelected: {
+    color: 'black',
   },
   categoryTitle: {
     fontSize: 16,
