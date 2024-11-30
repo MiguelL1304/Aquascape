@@ -35,13 +35,15 @@ const TimerScreen = ({ route }) => {
       }, 1000);
     } else if (secondsLeft === 0 && isActive) {
       clearInterval(interval);
-  
+      
       // Accrue full session shells
       const timeInMinutes = parseInt(customTime, 10);
       const bonusShells = 10;
       const totalSessionShells = timeInMinutes + bonusShells;
   
       setShells((prevShells) => prevShells + totalSessionShells);
+
+      handleTimerComplete(totalSessionShells);
   
       Alert.alert(
         'Session Complete!',
@@ -119,97 +121,51 @@ const TimerScreen = ({ route }) => {
   // Calculate total shells including shells earned during current session
   const totalShells = shells + minutesPassed;
 
-/////////////////////////BADGE STUFF /////////////////////////
+  async function updateSeashells(earnedShells) {
+    try {
+      // Get the current user's ID from Firebase Auth
+      const currentUser = auth.currentUser;
+  
+      if (!currentUser) {
+        console.error("No user is currently signed in.");
+        return;
+      }
+  
+      const userId = currentUser.uid; // Extract the user ID
+  
+      // Reference to the user's profile document
+      const profileDocRef = doc(db, "profile", userId);
+  
+      // Fetch the user's current profile
+      const profileDoc = await getDoc(profileDocRef);
+  
+      if (profileDoc.exists()) {
+        const currentSeashells = profileDoc.data().seashells || 0; // Default to 0 if seashells field is missing
+  
+        // Increment the seashells value
+        await updateDoc(profileDocRef, {
+          seashells: currentSeashells + earnedShells,
+        });
+      } else {
+        // If the profile doesn't exist, create it with the seashells field
+        await setDoc(profileDocRef, { seashells: earnedShells });
+      }
+  
+      console.log(`Successfully updated seashells by ${earnedShells}`);
+    } catch (error) {
+      console.error("Error updating seashells:", error);
+    }
+  }  
 
-//   const [earnedBadges, setEarnedBadges] = useState(['Sea Shell']);
-//   const [totalStudyMinutes, setTotalStudyMinutes] = useState(0); 
-
-//   const loadTotalStudyMinutes = async () => {
-//     try {
-//       const userId = auth.currentUser?.uid;
-//       if (!userId) {
-//           console.error('User is not authenticated');
-//           return;
-//       }      
-//         const badgeDocRef = doc(db, 'profile', userId, 'badges', 'badgeData');
-//         const badgeDoc = await getDoc(badgeDocRef);
-
-//         if (badgeDoc.exists()) {
-//             const data = badgeDoc.data();
-//             setTotalStudyMinutes(data.totalMinutes || 0);
-//             setEarnedBadges(data.earnedBadges || ['Sea Shell']); // Load badges from Firestore
-//             console.log(`Loaded from Firestore: ${data.totalMinutes} minutes and badges: ${data.earnedBadges}`);
-//         } else {
-//           console.log('No badge data found. Initializing Firestore document...');
-//           await setDoc(badgeDocRef, { totalMinutes: 0, earnedBadges: ['Sea Shell'] }, { merge: true });          
-//         }
-//     } catch (error) {
-//         console.error('Error loading from Firestore:', error);
-//     }
-// };
-
-// useEffect(() => {
-//     loadTotalStudyMinutes();
-// }, []);
-
-
-// const saveTotalStudyMinutes = async (newMinutes, newBadges) => {
-//   try {
-//     const userId = auth.currentUser?.uid;
-//     if (!userId) {
-//         console.error('User is not authenticated');
-//         return;
-//     }    
-//       const badgeDocRef = doc(db, 'profile', userId, 'badges', 'badgeData');
-
-//       await updateDoc(badgeDocRef, {
-//           totalMinutes: newMinutes,
-//           earnedBadges: newBadges,
-//       });
-//       console.log(`Saved to Firestore: ${newMinutes} minutes and badges: ${newBadges}`);
-//   } catch (error) {
-//       console.error('Error saving to Firestore:', error);
-//   }
-// };
-
-// const handleBadgeAward = async () => {
-//   const sessionMinutes = Math.floor((parseInt(customTime) * 60 - secondsLeft) / 60);
-//   const updatedTotalMinutes = totalStudyMinutes + sessionMinutes;
-
-//   setTotalStudyMinutes(updatedTotalMinutes);
-
-//   let newBadges = [...earnedBadges];
-
-//   // Award badges based on cumulative total minutes
-//   if (updatedTotalMinutes >=60 && !earnedBadges.includes('Conch Shell')) {
-//       newBadges.push('Conch Shell');
-//       Alert.alert('Congratulations!', 'You earned the Conch Shell badge!');
-//   }
-//   if (updatedTotalMinutes >= 300 && !earnedBadges.includes('Starfish')) {
-//       newBadges.push('Starfish');
-//       Alert.alert('Congratulations!', 'You earned the Starfish badge!');
-//   }
-//   if (updatedTotalMinutes >= 1440 && !earnedBadges.includes('Mermaid')) {
-//       newBadges.push('Mermaid');
-//       Alert.alert('Congratulations!', 'You earned the Mermaid badge!');
-//   }
-
-//   // Save updated minutes and badges to Firestore
-//   await saveTotalStudyMinutes(updatedTotalMinutes, newBadges);
-
-//   // Update state and navigate to Achievements
-//   if (newBadges.length > earnedBadges.length) {
-//       setEarnedBadges(newBadges);
-//       navigation.navigate('Achievements', { earnedBadges: newBadges });
-//   } else {
-//       Alert.alert('Session complete!');
-//       navigation.navigate('Achievements', { earnedBadges });
-//   }
-
-//   resetTimerStates();
-
-// };
-
+  const handleTimerComplete = async (earnedShells) => {
+    try {
+      console.log("Earned shells:", earnedShells); // Debug earned shells
+      await updateSeashells(earnedShells); // Pass the shells directly to Firestore
+    } catch (error) {
+      console.error("Error in handleTimerComplete:", error);
+    }
+  };  
+  
   return (
     <View style={styles.container}>
       {fromTasks && (
