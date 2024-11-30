@@ -40,33 +40,34 @@ const AquariumScreen = ({ navigation }) => {
   // Load the background image using Skia
   const background = useImage(require("../../../assets/backgroundSample.png"));
 
+  const fetchAquariumData = async () => {
+    const user = auth.currentUser;
+    if (user) {
+      const uid = user.uid;
+      const aquariumRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
+
+      try {
+        const aquariumSnap = await getDoc(aquariumRef);
+        if (aquariumSnap.exists()) {
+          const fishData = aquariumSnap.data().fish;
+          const updatedFishArray = fishData.map((fish, index) => ({
+            id: index,
+            fileName: fish.fileName,
+            positionX: Math.random() * (MAX_X_POSITION - MIN_X_POSITION) + MIN_X_POSITION,
+            positionY: Math.random() * (MAX_Y_POSITION - MIN_Y_POSITION) + MIN_Y_POSITION,
+          }));
+          setFishArray(updatedFishArray);
+        } else {
+          console.log("No aquarium data found");
+        }
+      } catch (error) {
+        console.error("Error fetching aquarium data: ", error);
+      }
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
-      const fetchAquariumData = async () => {
-        const user = auth.currentUser;
-        if (user) {
-          const uid = user.uid;
-          const aquariumRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
-
-          try {
-            const aquariumSnap = await getDoc(aquariumRef);
-            if (aquariumSnap.exists()) {
-              const fishData = aquariumSnap.data().fish;
-              const updatedFishArray = fishData.map((fish, index) => ({
-                id: index,
-                fileName: fish.fileName,
-                positionX: Math.random() * (MAX_X_POSITION - MIN_X_POSITION) + MIN_X_POSITION,
-                positionY: Math.random() * (MAX_Y_POSITION - MIN_Y_POSITION) + MIN_Y_POSITION,
-              }));
-              setFishArray(updatedFishArray);
-            } else {
-              console.log("No aquarium data found");
-            }
-          } catch (error) {
-            console.error("Error fetching aquarium data: ", error);
-          }
-        }
-      };
       fetchAquariumData();
     }, [])
   );
@@ -135,10 +136,12 @@ const AquariumScreen = ({ navigation }) => {
           snapPoints={["80%"]}
           backgroundStyle={{ backgroundColor: Colors.lightBlue }}
         >
-          <StorageMenu />
+          <StorageMenu refreshAquarium={fetchAquariumData} />
         </BottomSheetModal>
       </View>
+      
     </BottomSheetModalProvider>
+
   );
 };
 

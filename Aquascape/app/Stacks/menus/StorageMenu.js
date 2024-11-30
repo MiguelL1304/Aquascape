@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, Alert } from "react-native";
+import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
+
 import { auth, firestoreDB } from "../../../firebase/firebase";
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import Colors from "../../../constants/Colors";
@@ -13,8 +15,10 @@ const imageMap = {
   "Goldfish.gif": require("../../../assets/fish/Goldfish.gif"),
 };
 
-const StorageMenu = () => {
+const StorageMenu = ({ refreshAquarium }) => {
   const [storageFish, setStorageFish] = useState([]);
+  const [aquariumFish, setAquariumFish] = useState([]);
+
   const [selectedFish, setSelectedFish] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
@@ -30,6 +34,7 @@ const StorageMenu = () => {
           if (aquariumSnap.exists()) {
             const data = aquariumSnap.data();
             setStorageFish(data.storageFish || []);
+            setAquariumFish(data.fish || []);
           }
         } catch (error) {
           console.error("Error fetching fish data:", error);
@@ -40,8 +45,8 @@ const StorageMenu = () => {
     fetchFishData();
   }, []);
 
-  const handlePress = (fish) => {
-    setSelectedFish(fish);
+  const handlePress = (fish, isFromStorage) => {
+    setSelectedFish({ ...fish, isFromStorage });
     setIsModalVisible(true);
   };
 
@@ -74,7 +79,7 @@ const StorageMenu = () => {
           }
   
           // Add the fish to the aquarium array
-          const updatedFishArray = [...data.fish, { name: selectedFish.name, fileName: selectedFish.fileName }];
+          const updatedFishArray = [...data.fish, { name: selectedFish.name, fileName: selectedFish.fileName, rarity: selectedFish.rarity }];
           await updateDoc(aquariumDocRef, { fish: updatedFishArray });
   
           // Update storageFish (decrement count or remove fish)
@@ -90,6 +95,12 @@ const StorageMenu = () => {
   
           await updateDoc(aquariumDocRef, { storageFish: updatedStorageFish });
           setStorageFish(updatedStorageFish);
+
+          refreshAquarium();
+
+          // Update local state
+          setAquariumFish(updatedFishArray);
+          setStorageFish(updatedStorageFish);
   
           Alert.alert("Success", `${selectedFish.name} has been added to the aquarium.`);
         }
@@ -101,25 +112,88 @@ const StorageMenu = () => {
       }
     }
   };
+
+  const handleMoveToStorage = async () => {
+    const user = auth.currentUser;
+    if (user && selectedFish) {
+      const uid = user.uid;
+      const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
+  
+      try {
+        const aquariumSnap = await getDoc(aquariumDocRef);
+        if (aquariumSnap.exists()) {
+          const data = aquariumSnap.data();
+  
+          // Remove the fish from the aquarium
+          const updatedFishArray = data.fish.filter(
+            (fish) =>
+              !(
+                fish.name === selectedFish.name &&
+                fish.fileName === selectedFish.fileName
+              )
+          );
+  
+          // Add the fish to the storage array
+          const existingStorageFish = data.storageFish.find(
+            (fish) => fish.name === selectedFish.name
+          );
+  
+          const updatedStorageFish = existingStorageFish
+            ? data.storageFish.map((fish) =>
+                fish.name === selectedFish.name
+                  ? { ...fish, count: fish.count + 1 }
+                  : fish
+              )
+            : [
+                ...data.storageFish,
+                {
+                  name: selectedFish.name,
+                  fileName: selectedFish.fileName,
+                  rarity: selectedFish.rarity || "common", // Default to "common" if rarity is missing
+                  count: 1,
+                },
+              ];
+  
+          // Update Firestore
+          await updateDoc(aquariumDocRef, {
+            fish: updatedFishArray,
+            storageFish: updatedStorageFish,
+          });
+  
+          // Update local state
+          setAquariumFish(updatedFishArray);
+          setStorageFish(updatedStorageFish);
+  
+          Alert.alert("Success", `${selectedFish.name} has been moved to storage.`);
+        }
+      } catch (error) {
+        console.error("Error moving fish to storage:", error);
+        Alert.alert("Error", "An error occurred. Please try again.");
+      } finally {
+        closeModal();
+      }
+    }
+  };
+  
   
   
 
-  const renderFishItems = () => {
-    if (storageFish.length === 0) {
+  const renderFishItems = (fishArray, isFromStorage) => {
+    if (fishArray.length === 0) {
       return (
         <View style={styles.emptyMessageContainer}>
-          <Text style={styles.emptyMessageText}>No fish in storage.</Text>
+          <Text style={styles.emptyMessageText}>No fish available.</Text>
         </View>
       );
     }
 
     return (
       <View style={styles.itemGrid}>
-        {storageFish.map((item, index) => (
+        {fishArray.map((item, index) => (
           <TouchableOpacity
             style={styles.itemContainer}
             key={`${item.name}-${index}`}
-            onPress={() => handlePress(item)}
+            onPress={() => handlePress(item, isFromStorage)}
           >
             {item.count && (
               <View style={styles.countBadge}>
@@ -135,35 +209,51 @@ const StorageMenu = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Storage</Text>
-      {renderFishItems()}
-
-      {/* Modal for fish details */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={isModalVisible}
-        onRequestClose={closeModal}
+    <GestureHandlerRootView>
+      <ScrollView 
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: 16 }} 
+        keyboardShouldPersistTaps="handled" 
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {selectedFish && (
-              <>
-                <Text style={styles.modalText}>{selectedFish.name}</Text>
-                <Image source={imageMap[selectedFish.fileName]} style={styles.modalImage} />
-                <TouchableOpacity style={styles.addButton} onPress={handleAddToAquarium}>
-                  <Text style={styles.addButtonText}>Add to Aquarium</Text>
-                </TouchableOpacity>
-              </>
-            )}
-            <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
+        <Text style={styles.title}>Storage</Text>
+        {renderFishItems(storageFish, true)}
+        
+        <Text style={styles.title}>Aquarium</Text>
+        {renderFishItems(aquariumFish, false)}
+
+        {/* Modal for fish details */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={isModalVisible}
+          onRequestClose={closeModal}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              {selectedFish && (
+                <>
+                  <Text style={styles.modalText}>{selectedFish.name}</Text>
+                  <Image source={imageMap[selectedFish.fileName]} style={styles.modalImage} />
+                  {selectedFish.isFromStorage ? (
+                    <TouchableOpacity style={styles.addButton} onPress={handleAddToAquarium}>
+                      <Text style={styles.addButtonText}>Add to Aquarium</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={styles.addButton} onPress={handleMoveToStorage}>
+                      <Text style={styles.addButtonText}>Move to Storage</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+              <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+        
+      </ScrollView>
+    </GestureHandlerRootView>
   );
 };
 
@@ -171,7 +261,6 @@ export default StorageMenu;
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: Colors.lightBlue,
     padding: 16,
   },

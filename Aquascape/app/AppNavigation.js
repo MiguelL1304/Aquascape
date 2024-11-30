@@ -20,6 +20,8 @@ import AddTaskScreen from './Stacks/AddTaskScreen';
 import TimerScreen from './Stacks/home/TimerScreen';
 import AchievementsScreen from './Stacks/AchievementsScreen';
 import BadgesScreen from './Stacks/BadgesScreen';
+import MyStatsScreen from './Stacks/MyStatsScreen';
+
 
 
 const Drawer = createDrawerNavigator();
@@ -79,6 +81,20 @@ function DrawerNavigation() {
               </TouchableOpacity>
             ),
             
+          })}
+        />
+
+        <Drawer.Screen
+          name="My Stats"
+          component={MyStatsScreen}
+          options={({ navigation }) => ({
+            headerTransparent: true,
+            headerTitle: "",
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => navigation.openDrawer()}>
+                <Icon name="menu" size={30} style={{ marginLeft: 10 }} />
+              </TouchableOpacity>
+            ),
           })}
         />
 
