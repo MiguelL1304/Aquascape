@@ -56,6 +56,29 @@ const SignupScreen = ({ navigation }) => {
           ],
         });
 
+        //Stats document
+        const statsDocRef = doc(firestoreDB, "profile", uid, "stats", "data");
+        await setDoc(statsDocRef, {
+          totalMinutesUsed: 0,
+          minutesByCategory: {
+            Study: 0,
+            Fitness: 0,
+            Work: 0,
+            Leisure: 0,
+            Personal: 0,
+            Other: 0,
+          },
+          totalTasksCompleted: 0,
+          tasksCompletedByCategory: {
+            Study: 0,
+            Fitness: 0,
+            Work: 0,
+            Leisure: 0,
+            Personal: 0,
+            Other: 0,
+          },
+        });
+
         // Function to create tasks for a given month
         const createTasksForMonth = async (year, month) => {
           const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`; // Format as "YYYY-MM"
