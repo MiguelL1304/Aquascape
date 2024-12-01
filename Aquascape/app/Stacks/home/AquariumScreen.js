@@ -35,6 +35,8 @@ const AquariumScreen = ({ navigation }) => {
     "Goldfish.gif": require("../../../assets/fish/Goldfish.gif"),
     "Catfish.gif": require("../../../assets/fish/Catfish.gif"),
     "Bluetang.gif": require("../../../assets/fish/Bluetang.gif"),
+    "Blobfish.gif": require("../../../assets/fish/Blobfish.gif"),
+    "Happyfish.gif": require("../../../assets/fish/Happyfish.gif"),
   };
 
   // Load the background image using Skia

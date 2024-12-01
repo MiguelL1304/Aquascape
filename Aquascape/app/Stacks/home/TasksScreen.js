@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, Button, 
   TouchableOpacity, ScrollView, Platform, Keyboard } from 'react-native';
 import { ExpandableCalendar, CalendarProvider } from 'react-native-calendars';
 import { CheckBox } from 'react-native-elements';
 import AddTaskScreen from '../AddTaskScreen';
-import BottomSheet from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, firestoreDB } from "../../../firebase/firebase";
@@ -40,10 +40,14 @@ const TasksScreen = ({ navigation }) => {
   );
   const [tasks, setTasks] = useState({});
   const [newTask, setNewTask] = useState('');
-  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const bottomSheetRef = useRef(null);
   const sheetRef = useRef(null);
   const [selectedTasks, setSelectedTasks] = useState({});
   const { minDate, maxDate } = getMinMaxDates();
+
+  useEffect(() => {
+    console.log('Initial selectedDate:', selectedDate);
+  }, []);
 
   const markedDates = useMemo(() => {
     const marked = {
@@ -63,6 +67,7 @@ const TasksScreen = ({ navigation }) => {
   }, [selectedDate, tasks]);
 
   const handleDateChange = useCallback((date) => {
+    console.log('Date changed to:', date);
     setSelectedDate(date);
   }, []);
 
@@ -162,98 +167,94 @@ const TasksScreen = ({ navigation }) => {
     await checkAndCreateMonth(nextYear, nextMonth);
   };
 
-
-
-
-
+  const daysOfWeek = [
+    { label: 'Sunday', value: 'Sunday' },
+    { label: 'Monday', value: 'Monday' },
+    { label: 'Tuesday', value: 'Tuesday' },
+    { label: 'Wednesday', value: 'Wednesday' },
+    { label: 'Thursday', value: 'Thursday' },
+    { label: 'Friday', value: 'Friday' },
+    { label: 'Saturday', value: 'Saturday' },
+  ];
+  
   const addTask = (newTask) => {
     if (!newTask) return;
+    
+    console.log(newTask.recurrence);
 
-    const recurrenceDate = new Date(selectedDate);
+    if (newTask.recurrence == 'None' || !newTask.recurrence.length) {
+      // No recurrence: Add task only for the selected date
+      setTasks((prevTasks) => {
+        const updatedTasks = {
+          ...prevTasks,
+          [selectedDate]: [...(prevTasks[selectedDate] || []), newTask],
+        };
+        return updatedTasks;
+      });
+      console.log("Added task for:", selectedDate, newTask);
 
-    if (newTask.recurrence === 'Daily') {
-    const dailyDates = [];
-    for (let i = 0; i < 60; i++) { // Add tasks for the next 60 days
-      const dailyDate = new Date(recurrenceDate);
-      dailyDate.setDate(dailyDate.getDate() + i);
-      dailyDates.push(dailyDate.toISOString().split('T')[0]);
-    }
-    dailyDates.forEach((date) => {
-      setTasks((prevTasks) => {
-        const updatedTasks = {
-          ...prevTasks,
-          [date]: [...(prevTasks[date] || []), newTask],
-        };
-        return updatedTasks;
-      });
-    });
-  } 
-  else if (newTask.recurrence === 'Weekly') {
-    const weeklyDates = [];
-    for (let i = 0; i < 5; i++) { // Add tasks for the next 5 weeks
-      const weeklyDate = new Date(recurrenceDate);
-      weeklyDate.setDate(weeklyDate.getDate() + i * 7);
-      weeklyDates.push(weeklyDate.toISOString().split('T')[0]);
-    }
-    weeklyDates.forEach((date) => {
-      setTasks((prevTasks) => {
-        const updatedTasks = {
-          ...prevTasks,
-          [date]: [...(prevTasks[date] || []), newTask],
-        };
-        return updatedTasks;
-      });
-    });
-  } 
-  else if (newTask.recurrence === 'Monthly') {
-    const monthlyDates = [];
-    for (let i = 0; i < 2; i++) { // Add tasks for the next 2 months
-      const nextMonth = new Date(recurrenceDate);
-      nextMonth.setMonth(nextMonth.getMonth() + i);
-      monthlyDates.push(nextMonth.toISOString().split('T')[0]);
-    }
-    monthlyDates.forEach((date) => {
-      setTasks((prevTasks) => {
-        const updatedTasks = {
-          ...prevTasks,
-          [date]: [...(prevTasks[date] || []), newTask],
-        };
-        return updatedTasks;
-      });
-    });
-  } 
-  else if (newTask.recurrence === 'Custom' && Object.keys(newTask.selectedDates).length > 0) {
-    // Custom recurrence
-    Object.keys(newTask.selectedDates).forEach((date) => {
-      setTasks((prevTasks) => {
-        // If the date already has tasks, append the new task, otherwise initialize with an array
-        const updatedTasks = {
-          ...prevTasks,
-          [date]: [...(prevTasks[date] || []), newTask],
-        };
-        return updatedTasks;
-      });
-    });
-  } 
-  else {
-    // If no recurrence, add the task to the selected date
-    setTasks((prevTasks) => {
-      const updatedTasks = {
-        ...prevTasks,
-        [selectedDate]: [...(prevTasks[selectedDate] || []), newTask],
-      };
-      return updatedTasks;
-    });
-  }
+    } else {
+      const recurrenceDate = new Date(); // Start from today instead of the selected date
+  
+      // Calculate start date
+      const startDate = new Date(recurrenceDate);
+    
+      // Check if startDate is in December
+      let endDate;
+      if (startDate.getMonth() === 11) {
+        // If December, set endDate to the last day of January of the next year
+        endDate = new Date(startDate.getFullYear() + 1, 1, 31); // January 31st of next year
+      } else {
+        // Otherwise, set endDate to the last day of next month
+        const nextMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 2, 0);
+        endDate = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0); // End of next month
+      }
+    
+      console.log("Task Range:", { startDate, endDate });
 
-  closeBottomSheet(); // Close the bottom sheet after adding the task
-};
+      // Recurrence based on selected days of the week
+      const recurringDates = [];
+      const recurrenceDays = newTask.recurrence.map((day) =>
+        daysOfWeek.find((d) => d.label === day)?.value
+      );
+  
+      console.log("Recurrence Days:", recurrenceDays);
+  
+      for (let currentDate = new Date(startDate); currentDate <= endDate; currentDate.setDate(currentDate.getDate() + 1)) {
+        const currentDay = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
+        if (recurrenceDays.includes(currentDay)) {
+          recurringDates.push(new Date(currentDate).toISOString().split('T')[0]);
+        }
+      }
+  
+      recurringDates.forEach((date) => {
+        setTasks((prevTasks) => {
+          const updatedTasks = {
+            ...prevTasks,
+            [date]: [...(prevTasks[date] || []), newTask],
+          };
+          return updatedTasks;
+        });
+      });
+  
+      console.log("Created recurring tasks on:", recurringDates);
+      console.log(updatedTasks);
+    }
+  
+    closeBottomSheet(); // Close the bottom sheet after adding the task
+  };
+  
+  
+  
+  
+  
 
   const closeBottomSheet = () => {
-    if(sheetRef.current) {
-      sheetRef.current.close(); // Close the bottom sheet using the ref
-    }
-    setBottomSheetVisible(false);
+    bottomSheetRef.current?.dismiss()
+  };
+
+  const openBottomSheet = () => {
+    bottomSheetRef.current?.present();
   };
 
   const toggleTaskCompletion = async (taskId) => {
@@ -316,6 +317,7 @@ const TasksScreen = ({ navigation }) => {
   );
 
   return (
+    <BottomSheetModalProvider>
     <CalendarProvider
       date={selectedDate}
       minDate={minDate}
@@ -333,6 +335,7 @@ const TasksScreen = ({ navigation }) => {
           allowSelectionOutOfRange={false}
           pastScrollRange={1}
           futureScrollRange={1}
+          firstDay={1}
           theme={{
             todayTextColor: Colors.primary,
             selectedDayBackgroundColor: Colors.primary,
@@ -344,7 +347,7 @@ const TasksScreen = ({ navigation }) => {
         <View style={styles.todoContainer}>
           <TouchableOpacity
             style={[Elements.mainButton, styles.addButton]}
-            onPress={() => sheetRef.current?.expand()}
+            onPress={openBottomSheet}
           >
             <Text style={Elements.mainButtonText}>Create New Task</Text>
           </TouchableOpacity>
@@ -438,26 +441,24 @@ const TasksScreen = ({ navigation }) => {
           )}
         </View>
 
-        {/* Bottom Sheet for AddTaskScreen */}
-          <BottomSheet
-          ref={sheetRef}
-          snapPoints={['1%', '20%', '95%']}
-          enablePanDownToClose
-          onClose={() => {
-            Keyboard.dismiss(); // Hide keyboard when bottom sheet closes by dragging
-            setBottomSheetVisible(false);
-          }}
-        >
-          <ScrollView>
-            <AddTaskScreen
-              selectedDate={selectedDate}
-              addTaskCallback={addTask}
-              closeBottomSheet={closeBottomSheet} // Use closeBottomSheet to close the sheet and dismiss keyboard
-            />
+          {/* Bottom Sheet for Adding Tasks */}
+          <BottomSheetModal
+            ref={bottomSheetRef}
+            snapPoints={["75%"]}
+            backgroundStyle={{ backgroundColor: Colors.background }}
+            onDismiss={closeBottomSheet}
+          >
+            <ScrollView>
+              <AddTaskScreen
+                selectedDate={selectedDate}
+                addTaskCallback={addTask}
+                closeBottomSheet={closeBottomSheet}
+              />
             </ScrollView>
-          </BottomSheet>
+          </BottomSheetModal>
         </View>
       </CalendarProvider>
+      </BottomSheetModalProvider>
     );
   };
 

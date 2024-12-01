@@ -1,78 +1,108 @@
-// AddTaskScreen.js
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Platform, ActionSheetIOS } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Platform, Modal, ScrollView, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Calendar } from 'react-native-calendars';
 
-//Styling
+// Styling
 import Colors from '../../constants/Colors';
 import Elements from '../../constants/Elements';
 
-const categories = ['Work', 'Personal', 'Fitness', 'Study', 'Leisure', 'Other']; // Categories
-const durationOptions = Array.from({ length: 24 }, (_, i) => (i + 1) * 5); // 5-minute intervals up to 120 minutes
+const categories = ['Work', 'Personal', 'Fitness', 'Study', 'Leisure', 'Other'];
+const durationOptions = Array.from({ length: 24 }, (_, i) => (i + 1) * 5);
+
+const daysOfWeek = [
+  { label: 'Sunday', value: 'Sunday' },
+  { label: 'Monday', value: 'Monday' },
+  { label: 'Tuesday', value: 'Tuesday' },
+  { label: 'Wednesday', value: 'Wednesday' },
+  { label: 'Thursday', value: 'Thursday' },
+  { label: 'Friday', value: 'Friday' },
+  { label: 'Saturday', value: 'Saturday' },
+  { label: 'None', value: 'None' },
+];
 
 const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
   const [taskTitle, setTaskTitle] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState(null); // Default to the first category
-  const [recurrence, setRecurrence] = useState('Never'); // Default recurrence
-  const [calendarVisible, setCalendarVisible] = useState(false); // State to control calendar visibility
-  const [selectedDates, setSelectedDates] = useState({}); // Store selected dates
-  const [duration, setDuration] = useState(null); // Default duration in minutes
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [recurrence, setRecurrence] = useState([]);
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [selectedDates, setSelectedDates] = useState({});
+  const [duration, setDuration] = useState(null);
+  const [recurrenceModalVisible, setRecurrenceModalVisible] = useState(false);
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+  const [durationModalVisible, setDurationModalVisible] = useState(false);
 
   const handleAddTask = () => {
-    if (!taskTitle.trim()) return; // Prevent empty titles or duration
+
+    if (!taskTitle.trim()) {
+      Alert.alert('Missing Input', 'Please enter a title for the task.');
+      return;
+    }
+  
+    if (!selectedCategory) {
+      Alert.alert('Missing Input', 'Please select a category for the task.');
+      return;
+    }
+  
+    if (!duration) {
+      Alert.alert('Missing Input', 'Please select a duration for the task.');
+      return;
+    }
+  
+    if (recurrence.length === 0) {
+      Alert.alert('Missing Input', 'Please select a recurrence for the task.');
+      return;
+    }
+    
     const newTask = {
-      id: new Date().getTime(), // Unique ID for the task
+      id: new Date().getTime(),
       title: taskTitle,
       completed: false,
       category: selectedCategory,
       recurrence: recurrence,
-      selectedDates: recurrence === 'Custom' ? selectedDates : [], // Save selected dates if recurrence is Custom
-      duration: duration, // Add the duration to the task
+      selectedDates: recurrence.includes('Custom') ? selectedDates : [], // Save custom dates if selected
+      duration: duration,
     };
 
-    addTaskCallback(newTask); // Call the callback to add the task
+    addTaskCallback(newTask);
 
-    // Resets the input fields and pickers
+    // Reset fields
     setTaskTitle('');
     setSelectedCategory(null);
-    setRecurrence('Never');
+    setRecurrence([]);
     setSelectedDates({});
     setDuration(null);
 
-    closeBottomSheet(); // Close the bottom sheet 
+    closeBottomSheet();
   };
 
   const handleCancel = () => {
-    // Reset input fields and pickers
     setTaskTitle('');
     setSelectedCategory(null);
-    setRecurrence('Never');
+    setRecurrence([]);
     setSelectedDates({});
     setDuration(null);
 
-    closeBottomSheet(); // Close the bottom sheet when cancelled
+    closeBottomSheet();
   };
 
-  const showActionSheet = (options, onSelect) => {
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options: [...options, "Cancel"],
-        cancelButtonIndex: options.length,
-      },
-      (buttonIndex) => {
-        if (buttonIndex < options.length) {
-          onSelect(options[buttonIndex]);
-        }
+  const toggleDaySelection = (day) => {
+    if (day === 'None') {
+      // If "None" is selected, clear all other options and only select "None"
+      setRecurrence(['None']);
+    } else {
+      // If a day other than "None" is selected
+      if (recurrence.includes('None')) {
+        // Remove "None" if it was previously selected
+        setRecurrence([day]);
+      } else if (recurrence.includes(day)) {
+        // Toggle off the selected day
+        setRecurrence(recurrence.filter((d) => d !== day));
+      } else {
+        // Add the selected day
+        setRecurrence([...recurrence, day]);
       }
-    );
-  };
-
-  // Function to handle date selection
-  const handleDayPress = (day) => {
-    const newSelectedDates = { ...selectedDates };
-    newSelectedDates[day.dateString] = { selected: !newSelectedDates[day.dateString]?.selected, selectedColor: Colors.primary };
-    setSelectedDates(newSelectedDates);
+    }
   };
 
   return (
@@ -87,94 +117,155 @@ const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
 
       <View style={styles.pickerContainer}>
         <Text style={styles.label}>Category:</Text>
-        {Platform.OS === 'ios' ? (
-          <TouchableOpacity
-            onPress={() => showActionSheet(categories, setSelectedCategory)}
-            style={styles.popupButton}
-          >
-            <Text>{selectedCategory || "Select a Category..."}</Text>
-          </TouchableOpacity>
-        ) : (
-      <Picker
-        style={styles.picker}
-        selectedValue={selectedCategory}
-        onValueChange={setSelectedCategory}
-      >
-        <Picker.Item label="Select a Category..." value={null} />
-        {categories.map((category) => (
-          <Picker.Item key={category} label={category} value={category} />
-        ))}
-      </Picker>
-    )}
-  </View>
+        <TouchableOpacity
+          onPress={() => setCategoryModalVisible(true)} // Opens the category modal
+          style={styles.popupButton}
+        >
+          <Text>{selectedCategory || 'Select a Category'}</Text>
+        </TouchableOpacity>
+      </View>
+
 
       <View style={styles.pickerContainer}>
         <Text style={styles.label}>Recurrence:</Text>
-        {Platform.OS === 'ios' ? (
-            <TouchableOpacity
-              onPress={() => showActionSheet(['Never', 'Daily', 'Weekly', 'Monthly', 'Custom'], setRecurrence)}
-              style={styles.popupButton}
-            >
-              <Text>{recurrence || "Never"}</Text>
-            </TouchableOpacity>
-          ) : (
-      <Picker
-        style={styles.picker}
-        selectedValue={recurrence}
-        onValueChange={setRecurrence}
-      >
-        <Picker.Item label="Never" value="Never" />
-        <Picker.Item label="Daily" value="Daily" />
-        <Picker.Item label="Weekly" value="Weekly" />
-        <Picker.Item label="Monthly" value="Monthly" />
-        <Picker.Item label="Custom" value="Custom" />
-      </Picker>
-      )}
-        </View>
-
-      {/* Display Calendar for Custom Recurrence */}
-      {recurrence === 'Custom' && (
-        <View style={styles.calendarContainer}>
-          <Text style={styles.label}>Select Dates:</Text>
-          <Calendar
-            onDayPress={handleDayPress}
-            markedDates={selectedDates}
-          />
-        </View>
-      )}
+        <TouchableOpacity
+          onPress={() => setRecurrenceModalVisible(true)}
+          style={styles.popupButton}
+        >
+          <Text>{recurrence.length > 0 ? recurrence.join(', ') : 'Select Recurrence Days'}</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.pickerContainer}>
-        <Text style={styles.label}>Duration (in mins):</Text>
-        {Platform.OS === 'ios' ? (
-          <TouchableOpacity
-            onPress={() => showActionSheet([ 'Select duration', ...durationOptions.map(String)], (value) => setDuration(Number(value)))}
-            style={styles.popupButton}
-          >
-            <Text>{duration === null ? 'Select duration' : `${duration} minutes`}</Text>
-          </TouchableOpacity>
-        ) : (
-          <Picker
-            style={styles.picker}
-            selectedValue={duration}
-            onValueChange={setDuration}
-          >
-            <Picker.Item label="Select duration" value={null} />
-            {durationOptions.map((minute) => (
-              <Picker.Item key={minute} label={`${minute} minutes`} value={minute} />
-            ))}
-          </Picker>
-        )}
+        <Text style={styles.label}>Duration:</Text>
+        <TouchableOpacity
+          onPress={() => setDurationModalVisible(true)}
+          style={styles.popupButton}
+        >
+          <Text>{duration === null ? 'Select Duration' : `${duration} minutes`}</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.buttonContainer}>
-      <TouchableOpacity style={Elements.mainButton} onPress={handleAddTask}>
-        <Text style={Elements.mainButtonText}>Add Task</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={Elements.secondaryButton} onPress={handleCancel}>
-        <Text style={Elements.secondaryButtonText}>Cancel</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={Elements.mainButton} onPress={handleAddTask}>
+          <Text style={Elements.mainButtonText}>Add Task</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={Elements.secondaryButton} onPress={handleCancel}>
+          <Text style={Elements.secondaryButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Modal for Recurrence Selection */}
+      <Modal visible={recurrenceModalVisible} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Select Recurrence Days</Text>
+            {daysOfWeek.map((day) => (
+              <TouchableOpacity
+                key={day.value}
+                style={[
+                  styles.dayButton,
+                  recurrence.includes(day.value) && styles.selectedDayButton,
+                ]}
+                onPress={() => toggleDaySelection(day.value)}
+              >
+                <Text
+                  style={[
+                    styles.dayText,
+                    recurrence.includes(day.value) && styles.selectedDayText,
+                  ]}
+                >
+                  {day.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={Elements.mainButton}
+              onPress={() => setRecurrenceModalVisible(false)}
+            >
+              <Text style={Elements.mainButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal for Category Selection */}
+      <Modal visible={categoryModalVisible} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Select a Category</Text>
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category}
+                style={[
+                  styles.dayButton,
+                  selectedCategory === category && styles.selectedDayButton,
+                ]}
+                onPress={() => {
+                  setSelectedCategory(category);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.dayText,
+                    selectedCategory === category && styles.selectedDayText,
+                  ]}
+                >
+                  {category}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={Elements.mainButton}
+              onPress={() => setCategoryModalVisible(false)} // Close category modal
+            >
+              <Text style={Elements.mainButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal for Duration Selection */}
+      <Modal visible={durationModalVisible} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Select Duration</Text>
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+              {durationOptions.map((durationValue) => (
+                <TouchableOpacity
+                  key={durationValue}
+                  style={[
+                    styles.dayButton, // Reusing styles.dayButton to ensure consistency
+                    duration === durationValue && styles.selectedDayButton,
+                  ]}
+                  onPress={() => setDuration(durationValue)}
+                >
+                  <Text
+                    style={[
+                      styles.dayText,
+                      duration === durationValue && styles.selectedDayText,
+                    ]}
+                  >
+                    {`${durationValue} minutes`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity
+              style={Elements.mainButton}
+              onPress={() => setDurationModalVisible(false)}
+            >
+              <Text style={Elements.mainButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+
+
+
+
     </View>
-  </View>
   );
 };
 
@@ -199,7 +290,7 @@ const styles = StyleSheet.create({
   pickerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    ...(Platform.OS === 'ios' && { marginTop: 20 }),
+    marginTop: 20,
   },
   label: {
     flex: 1,
@@ -217,14 +308,80 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#f9f9f9',
   },
-  calendarContainer: {
-    marginTop: 10,
-  },
   buttonContainer: {
-    marginTop: 10,
+    marginTop: 20,
     flexDirection: 'column',
     justifyContent: 'space-between',
     height: 100,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '80%',
+    maxHeight: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  dayButton: {
+    width: '100%',
+    padding: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    marginBottom: 10,
+  },
+  selectedDayButton: {
+    backgroundColor: Colors.primary,
+  },
+  dayText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  selectedDayText: {
+    color: '#fff',
+  },
+  scrollView: {
+    width: '100%',
+    flexGrow: 1,
+    alignSelf: 'stretch',
+    marginVertical: 10,
+  },
+  scrollContent: {
+    alignItems: 'center',
+  },
+  optionButton: {
+    width: '100%',
+    padding: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    marginBottom: 10,
+  },
+  selectedOptionButton: {
+    backgroundColor: Colors.primary,
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  selectedOptionText: {
+    color: '#fff',
   },
 });
 

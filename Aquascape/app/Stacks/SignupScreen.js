@@ -79,6 +79,21 @@ const SignupScreen = ({ navigation }) => {
           },
         });
 
+        //Recurring Tasks document
+        const recurringTasksRef = doc(firestoreDB, "profile", uid, "tasks", "recurringTasks");
+
+        const recurringTasksData = {
+          Sunday: [],
+          Monday: [],
+          Tuesday: [],
+          Wednesday: [],
+          Thursday: [],
+          Friday: [],
+          Saturday: [],
+        };
+
+        await setDoc(recurringTasksRef, recurringTasksData);
+
         // Function to create tasks for a given month
         const createTasksForMonth = async (year, month) => {
           const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`; // Format as "YYYY-MM"
