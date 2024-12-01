@@ -165,16 +165,99 @@ const TimerScreen = ({ route }) => {
     }
   }  
 
-  const handleTimerComplete = async (earnedShells) => {
+
+  // sync timer to badges
+  async function updateAchievements(totalMinutes) {
     try {
-      //console.log("Earned shells:", earnedShells); 
+        const userId = auth.currentUser?.uid;
+        if (!userId) return;
+
+        const badgeDocRef = doc(db, "profile", userId, "badges", "badgeData");
+        const badgeDocSnap = await getDoc(badgeDocRef);
+
+        let earnedBadges = badgeDocSnap.exists() ? badgeDocSnap.data()?.earnedBadges || [] : [];
+
+        // Determine which badges to unlock
+        const newBadges = [];
+        if (totalMinutes >= 10 && !earnedBadges.includes("Coral")) {
+            newBadges.push("Coral");
+        }
+        if (totalMinutes >= 15 && !earnedBadges.includes("Conch Shell")) {
+            newBadges.push("Conch Shell");
+        }
+        if (totalMinutes >= 18 && !earnedBadges.includes("Starfish")) {
+            newBadges.push("Starfish");
+        }
+
+        if (newBadges.length > 0) {
+            earnedBadges = [...earnedBadges, ...newBadges];
+            console.log("Updated earnedBadges:", earnedBadges);
+
+            // Update Firestore
+            await updateDoc(badgeDocRef, { earnedBadges });
+        }
+    } catch (error) {
+        console.error("Error updating achievements:", error);
+    }
+}
+
+
+const handleTimerComplete = async (earnedShells) => {
+  try {
+      // console.log("handleTimerComplete called");
+      // console.log("Earned shells:", earnedShells);
+
+      // Update the seashell count in the local state and Firestore
       const updatedShellCount = shells + earnedShells;
       setShells(updatedShellCount);
-      await updateSeashells(earnedShells); 
-    } catch (error) {
+      await updateSeashells(earnedShells);
+
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+      const userId = currentUser.uid;
+
+      // Update profile document
+      const profileDocRef = doc(db, "profile", userId);
+      const profileDocSnap = await getDoc(profileDocRef);
+
+      let totalMinutes = profileDocSnap.exists() ? profileDocSnap.data()?.totalMinutes || 0 : 0;
+
+      // Increment totalMinutes
+      totalMinutes += parseInt(customTime, 10); // Add the timer duration
+      console.log("Updated totalMinutes:", totalMinutes);
+
+      // Update the profile document
+      await updateDoc(profileDocRef, {
+          seashells: updatedShellCount,
+          totalMinutes,
+      });
+
+      // Update the badgeData document
+      const badgeDocRef = doc(db, "profile", userId, "badges", "badgeData");
+      const badgeDocSnap = await getDoc(badgeDocRef);
+
+      let badgeTotalMinutes = badgeDocSnap.exists() ? badgeDocSnap.data()?.totalMinutes || 0 : 0;
+      // console.log("Current totalMinutes in badgeData:", badgeTotalMinutes);
+
+      // Increment totalMinutes for badges
+      badgeTotalMinutes += parseInt(customTime, 10);
+
+      // Update Firestore
+      await updateDoc(badgeDocRef, { totalMinutes: badgeTotalMinutes });
+
+
+      // Update achievements based on totalMinutes
+      await updateAchievements(badgeTotalMinutes);
+  } catch (error) {
       console.error("Error in handleTimerComplete:", error);
-    }
-  };  
+  }
+};
+
+
+
+
+  
+  
   
   return (
     <View style={styles.container}>
