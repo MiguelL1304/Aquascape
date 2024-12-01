@@ -1,24 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Modal } from "react-native";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc,setDoc, onSnapshot } from "firebase/firestore";
 import { firestoreDB, auth } from "../../firebase/firebase";
 import Colors from "../../constants/Colors";
 import shell from "../../assets/shell.png";
 import conch from "../../assets/Conch.png";
 import starfish from "../../assets/starfish.png";
-import cat from "../../assets/cat.gif";
+// import percy from "../../assets/percy.png"; // Percy status image
+// import poseidon from "../../assets/poseidon.png"; // Poseidon status image
+// import neptune from "../../assets/neptune.png"; // Neptune status image
+import cat from "../../assets/cat.gif"; // Default status image
+import coral from '../../assets/coral.png';
 
 const AchievementsScreen = () => {
-    const [earnedBadges, setEarnedBadges] = useState(['Sea Shell']);
+    const [earnedBadges, setEarnedBadges] = useState(['Coral']);
     const [userData, setUserData] = useState({});
     const [selectedBadge, setSelectedBadge] = useState(null); // Track selected badge for modal
     const [modalVisible, setModalVisible] = useState(false);
     const [isLocked, setIsLocked] = useState(false); // State to track if badge is locked
+    const [status, setStatus] = useState({ name: "Newbie", image: cat }); // Default status
 
     const badges = [
-        { title: 'Sea Shell', description: 'Thanks for using Aquascape!', image: shell },
-        { title: 'Conch Shell', description: 'Be Productive for 1 hour', image: conch },
-        { title: 'Starfish', description: 'Be Productive for 5 hours', image: starfish },
+        { title: 'Coral', description: 'Thanks for using Aquascape!', image: coral },
+        { title: 'Conch Shell', description: '1 hour of productivity', image: conch },
+        { title: 'Starfish', description: '5 hours of productivity', image: starfish },
         { title: 'Task Master', description: 'Complete 5 tasks', image: cat },
         { title: 'Task Champion', description: 'Complete 10 tasks', image: cat },
         { title: 'Test', description: 'test', image: cat },
@@ -28,35 +33,151 @@ const AchievementsScreen = () => {
     ];
 
     useEffect(() => {
-        const fetchEarnedBadges = async () => {
+        const fetchData = async () => {
             try {
                 const userId = auth.currentUser?.uid;
                 if (!userId) return;
-
-                const userProfileRef = doc(firestoreDB, 'profile', userId);
-                const badgeDocRef = doc(firestoreDB, 'profile', userId, 'badges', 'badgeData');
-
+    
+                const userProfileRef = doc(firestoreDB, "profile", userId);
+                const badgeDocRef = doc(firestoreDB, "profile", userId, "badges", "badgeData");
+    
+                // Use Promise.all to fetch profile and badge data in parallel
                 const [userProfileSnap, badgeDocSnap] = await Promise.all([
                     getDoc(userProfileRef),
                     getDoc(badgeDocRef),
                 ]);
-
+    
                 if (userProfileSnap.exists()) {
-                    setUserData(userProfileSnap.data());
+                    const userData = userProfileSnap.data();
+                    setUserData(userData);
+                    // console.log("User data:", userData);
                 }
-
-                const earnedBadgesFromFirestore = badgeDocSnap.exists()
-                    ? badgeDocSnap.data()?.earnedBadges || []
-                    : [];
-
-                setEarnedBadges(earnedBadgesFromFirestore);
+    
+                if (badgeDocSnap.exists()) {
+                    const badgeData = badgeDocSnap.data();
+                    setEarnedBadges(badgeData.earnedBadges || []);
+                    console.log("Earned badges:", badgeData.earnedBadges);
+                }
             } catch (error) {
-                console.error('Error fetching badges:', error);
+                console.error("Error fetching data:", error);
             }
         };
+    
+        fetchData();
+    }, []);
+    
+    // Real-time listener for shells and badges
+    useEffect(() => {
+        const userId = auth.currentUser?.uid;
+        if (!userId) return;
+    
+        const userProfileRef = doc(firestoreDB, "profile", userId);
+        const badgeDocRef = doc(firestoreDB, "profile", userId, "badges", "badgeData");
+    
+        const unsubscribeProfile = onSnapshot(userProfileRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setUserData(docSnap.data());
+            }
+        });
+    
+        const unsubscribeBadges = onSnapshot(badgeDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setEarnedBadges(docSnap.data().earnedBadges || []);
+            }
+        });
+    
+        return () => {
+            unsubscribeProfile();
+            unsubscribeBadges();
+        };
+    }, []);
+    
+    
 
+    useEffect(() => {
+        const fetchEarnedBadges = async () => {
+            try {
+                const userId = auth.currentUser?.uid;
+                if (!userId) return;
+    
+                const badgeDocRef = doc(firestoreDB, "profile", userId, "badges", "badgeData");
+                const badgeDocSnap = await getDoc(badgeDocRef);
+    
+                if (badgeDocSnap.exists()) {
+                    const badgeData = badgeDocSnap.data();
+                    const { totalMinutes = 0, earnedBadges = [] } = badgeData;
+    
+                    // Lock/Unlock badges based on conditions
+                    const updatedBadges = [...earnedBadges];
+                    if (totalMinutes >= 7 && !updatedBadges.includes("Coral")) {
+                        updatedBadges.push("Coral");
+                    }
+    
+                    setEarnedBadges(updatedBadges);
+    
+                    // Update Firestore if badges were added
+                    if (JSON.stringify(updatedBadges) !== JSON.stringify(earnedBadges)) {
+                        await updateDoc(badgeDocRef, { earnedBadges: updatedBadges });
+                    }
+                } else {
+                    // Initialize badge data for new users
+                    await setDoc(badgeDocRef, {
+                        totalMinutes: 0,
+                        earnedBadges: [],
+                    });
+                    console.log("Initialized badge data for new user.");
+                }
+            } catch (error) {
+                console.error("Error fetching earned badges:", error);
+            }
+        };
+    
         fetchEarnedBadges();
     }, []);
+    
+    
+    
+    useEffect(() => {
+        const updateUserStatus = async () => {
+            const badgeCount = earnedBadges.length;
+    
+            let newStatus;
+            if (badgeCount >= 9) {
+                newStatus = { name: "Neptune", image: starfish };
+            } else if (badgeCount >= 6) {
+                newStatus = { name: "Poseidon", image: conch };
+            } else if (badgeCount >= 3) {
+                newStatus = { name: "Percy", image: shell };
+            } else {
+                newStatus = { name: "Newbie", image: cat };
+            }
+    
+            // Update the status locally
+            setStatus(newStatus);
+    
+            // Update Firestore if necessary
+            try {
+                const userId = auth.currentUser?.uid;
+                if (!userId) return;
+    
+                const userProfileRef = doc(firestoreDB, "profile", userId);
+    
+                // Update Firestore only if the status has changed
+                if (userData.status !== newStatus.name) {
+                    await updateDoc(userProfileRef, { status: newStatus.name });
+                    // console.log(`Status updated to ${newStatus.name}`);
+                }
+            } catch (error) {
+                console.error("Error updating user status in Firestore:", error);
+            }
+        };
+    
+        // Trigger the status update whenever the earnedBadges array changes
+        if (earnedBadges.length > 0) {
+            updateUserStatus();
+        }
+    }, [earnedBadges, userData]);
+    
 
     const handleBadgePress = (badge) => {
         setSelectedBadge(badge);
@@ -81,8 +202,8 @@ const AchievementsScreen = () => {
 
             {/* Status Image and Text */}
             <View style={styles.statusContainer}>
-                <Image source={cat} style={styles.statusImage} />
-                <Text style={styles.statusText}>Status</Text>
+                <Image source={status.image} style={styles.statusImage} />
+                <Text style={styles.statusText}>{status.name}</Text>
             </View>
 
             <Text style={styles.headerText}>Achievements</Text>
@@ -137,6 +258,7 @@ const AchievementsScreen = () => {
         </View>
     );
 };
+
 
 const styles = StyleSheet.create({
     container: {
