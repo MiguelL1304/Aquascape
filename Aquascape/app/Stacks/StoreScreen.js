@@ -12,8 +12,8 @@ const StoreScreen = ({ navigation }) => {
     { id: "4", name: "Blue Tang", image: require("../../assets/fish/Bluetang.gif"), price: 100, fileName: "Bluetang.gif", rarity: "common", unlocked: true },
     { id: "5", name: "Cat Fish", image: require("../../assets/fish/Catfish.gif"), price: 100, fileName: "Catfish.gif", rarity: "rare", unlocked: true },
     { id: "6", name: "Goldfish", image: require("../../assets/fish/Goldfish.gif"), price: 100, fileName: "Goldfish.gif", rarity: "common", unlocked: true },
-    { id: '7', name: '', image: require("../../assets/cat.gif"), price: '100', unlocked: false, requirement: { type: 'productivity', hours: 1 } },
-    { id: '8', name: '', image: require("../../assets/cat.gif"), price: '100', unlocked: false, requirement: { type: 'productivity', hours: 5 } },
+    { id: "7", name: "Blobfish", image: require("../../assets/fish/Blobfish.gif"), price: 100, fileName: "Blobfish.gif", rarity: "common", unlocked: true },
+    { id: "8", name: "Happyfish", image: require("../../assets/fish/Happyfish.gif"), price: 100, fileName: "Happyfish.gif", rarity: "common", unlocked: true },
     { id: '9', name: '', image: require("../../assets/cat.gif"), price: '100', unlocked: false,requirement: { type: 'productivity', hours: 10 } },
     { id: '10', name: '', image: require("../../assets/cat.gif"), price: '100', unlocked: false, requirement: { type: 'productivity', hours: 24 } },
   ]);
@@ -26,6 +26,7 @@ const StoreScreen = ({ navigation }) => {
 
   const [userProgress, setUserProgress] = useState({});
 
+  // DELETE THIS LATER
   useEffect(() => {
     const fetchUserProgress = async () => {
         try {

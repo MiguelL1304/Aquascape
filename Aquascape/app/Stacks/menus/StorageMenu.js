@@ -13,6 +13,8 @@ const imageMap = {
   "Bluetang.gif": require("../../../assets/fish/Bluetang.gif"),
   "Catfish.gif": require("../../../assets/fish/Catfish.gif"),
   "Goldfish.gif": require("../../../assets/fish/Goldfish.gif"),
+  "Blobfish.gif": require("../../../assets/fish/Blobfish.gif"),
+  "Happyfish.gif": require("../../../assets/fish/Happyfish.gif"),
 };
 
 const StorageMenu = ({ refreshAquarium }) => {
