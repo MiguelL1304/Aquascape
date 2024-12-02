@@ -57,25 +57,45 @@ const SignupScreen = ({ navigation }) => {
         });
 
         //Stats document
-        const statsDocRef = doc(firestoreDB, "profile", uid, "stats", "data");
-        await setDoc(statsDocRef, {
-          totalMinutesUsed: 0,
-          minutesByCategory: {
-            Study: 0,
-            Fitness: 0,
-            Work: 0,
-            Leisure: 0,
-            Personal: 0,
-            Other: 0,
+        const statsRef = collection(firestoreDB, "profile", uid, "stats");
+
+        const currentDateTime = new Date();
+        const currentMonth = `${currentDateTime.getFullYear()}-${String(currentDateTime.getMonth() + 1).padStart(2, "0")}`;
+        const currentYear = `${currentDateTime.getFullYear()}`;
+
+        // daily & weekly docs will be generated dynamically
+        await setDoc(doc(statsRef, "daily"), {});
+        await setDoc(doc(statsRef, "weekly"), {});
+
+        await setDoc(doc(statsRef, "monthly"), {
+          [currentMonth]: {
+            totalTimeLogged: 0,
+            categoryBreakdown: {
+              Study: 0,
+              Fitness: 0,
+              Work: 0,
+              Leisure: 0,
+              Personal: 0,
+              Other: 0,
+            },
+            taskCounts: 0,
+            completedTasks: 0,
           },
-          totalTasksCompleted: 0,
-          tasksCompletedByCategory: {
-            Study: 0,
-            Fitness: 0,
-            Work: 0,
-            Leisure: 0,
-            Personal: 0,
-            Other: 0,
+        });
+
+        await setDoc(doc(statsRef, "yearly"), {
+          [currentYear]: {
+            totalTimeLogged: 0,
+            categoryBreakdown: {
+              Study: 0,
+              Fitness: 0,
+              Work: 0,
+              Leisure: 0,
+              Personal: 0,
+              Other: 0,
+            },
+            taskCounts: 0,
+            completedTasks: 0,
           },
         });
 
