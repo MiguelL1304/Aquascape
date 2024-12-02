@@ -168,13 +168,13 @@ const TasksScreen = ({ navigation }) => {
   };
 
   const daysOfWeek = [
-    { label: 'Sunday', value: 'Sunday' },
     { label: 'Monday', value: 'Monday' },
     { label: 'Tuesday', value: 'Tuesday' },
     { label: 'Wednesday', value: 'Wednesday' },
     { label: 'Thursday', value: 'Thursday' },
     { label: 'Friday', value: 'Friday' },
     { label: 'Saturday', value: 'Saturday' },
+    { label: 'Sunday', value: 'Sunday' },
   ];
   
   const addTask = (newTask) => {
@@ -194,10 +194,9 @@ const TasksScreen = ({ navigation }) => {
       console.log("Added task for:", selectedDate, newTask);
 
     } else {
-      const recurrenceDate = new Date(); // Start from today instead of the selected date
-  
+      const recurrenceDate = new Date(); 
       // Calculate start date
-      const startDate = new Date(recurrenceDate);
+      const startDate = new Date(recurrenceDate.getFullYear(), recurrenceDate.getMonth(), recurrenceDate.getDate());
     
       // Check if startDate is in December
       let endDate;
@@ -233,12 +232,12 @@ const TasksScreen = ({ navigation }) => {
             ...prevTasks,
             [date]: [...(prevTasks[date] || []), newTask],
           };
+          //console.log(updatedTasks);
           return updatedTasks;
         });
       });
   
       console.log("Created recurring tasks on:", recurringDates);
-      console.log(updatedTasks);
     }
   
     closeBottomSheet(); // Close the bottom sheet after adding the task
