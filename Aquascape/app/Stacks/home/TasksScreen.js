@@ -5,8 +5,9 @@ import { ExpandableCalendar, CalendarProvider } from 'react-native-calendars';
 import { CheckBox } from 'react-native-elements';
 import AddTaskScreen from '../AddTaskScreen';
 import { BottomSheetModal, BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { useFocusEffect } from '@react-navigation/native';
 
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { auth, firestoreDB } from "../../../firebase/firebase";
 
 //Styling
@@ -35,9 +36,11 @@ const getMinMaxDates = () => {
 };
 
 const TasksScreen = ({ navigation }) => {
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    const localDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return localDate.toISOString().split('T')[0];
+  });
   const [tasks, setTasks] = useState({});
   const [newTask, setNewTask] = useState('');
   const bottomSheetRef = useRef(null);
@@ -48,6 +51,24 @@ const TasksScreen = ({ navigation }) => {
   useEffect(() => {
     console.log('Initial selectedDate:', selectedDate);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const initializeMonths = async () => {
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1; // Months are 0-indexed in JavaScript
+    
+        try {
+          await createTasksForMonthAndNext(currentYear, currentMonth);
+        } catch (error) {
+          console.error("Error initializing months:", error);
+        }
+      };
+  
+      initializeMonths();
+    }, [])
+  );
 
   const markedDates = useMemo(() => {
     const marked = {
@@ -98,74 +119,85 @@ const TasksScreen = ({ navigation }) => {
     }
   };
 
-  const uploadTasks = async (month, tasksByWeek) => {
+  const uploadTasks = async (monthKey, weekTag, tasksToUpload) => {
     const user = auth.currentUser;
-
-    if (user) {
-      try {
-        const uid = user.uid;
-        const tasksDocRef = doc(firestoreDB, "profile", uid, "tasks", month);
-
-        // Update the tasks in Firestore
-        await updateDoc(tasksDocRef, tasksByWeek);
-
-        console.log(`Tasks for ${month} uploaded successfully.`);
-      } catch (error) {
-        console.error("Error uploading tasks:", error);
-        throw new Error("Could not upload tasks.");
-      }
-    } else {
-      throw new Error("User not authenticated.");
+  
+    if (!user) {
+      console.error("User not authenticated.");
+      return;
+    }
+  
+    try {
+      const uid = user.uid;
+      const tasksDocRef = doc(firestoreDB, "profile", uid, "tasks", monthKey);
+  
+      // Add tasks to the specific week array in Firestore
+      await updateDoc(tasksDocRef, {
+        [weekTag]: arrayUnion(...tasksToUpload),
+      });
+  
+      console.log(`Tasks for week ${weekTag} uploaded successfully.`);
+    } catch (error) {
+      console.error("Error uploading tasks:", error);
+      throw new Error("Could not upload tasks.");
     }
   };
+  
 
   const createTasksForMonthAndNext = async (year, month) => {
     const user = auth.currentUser;
     if (!user) {
-      throw new Error("User not authenticated.");
+        throw new Error("User not authenticated.");
     }
 
     const uid = user.uid;
 
     const formatMonthKey = (year, month) => {
-      return `${year}-${String(month).padStart(2, "0")}`; // Format as "YYYY-MM"
+        return `${year}-${String(month).padStart(2, "0")}`; // Format as "YYYY-MM"
     };
 
     const checkMonth = async (year, month) => {
-      const monthKey = formatMonthKey(year, month);
-      const monthTasksRef = doc(firestoreDB, "profile", uid, "tasks", monthKey);
+        const monthKey = formatMonthKey(year, month);
+        const monthTasksRef = doc(firestoreDB, "profile", uid, "tasks", monthKey);
 
-      // Check if the document exists
-      const monthSnap = await getDoc(monthTasksRef);
+        // Check if the document exists
+        const monthSnap = await getDoc(monthTasksRef);
 
-      if (!monthSnap.exists()) {
-        // Predefined week keys
-        const weeksData = {
-          "1-7": [],
-          "8-14": [],
-          "15-21": [],
-          "22-28": [],
-          "29-end": [],
-        };
+        if (!monthSnap.exists()) {
+            // Predefined week keys
+            const weeksData = {
+                "1-7": [],
+                "8-14": [],
+                "15-21": [],
+                "22-28": [],
+                "29-end": [],
+            };
 
-        // Create the document for the month
-        await setDoc(monthTasksRef, weeksData);
-        console.log(`Created tasks document for ${monthKey}`);
-      } else {
-        console.log(`Tasks document for ${monthKey} already exists.`);
-      }
+            // Create the document for the month
+            await setDoc(monthTasksRef, weeksData);
+            console.log(`Created tasks document for ${monthKey}`);
+        } else {
+            console.log(`Tasks document for ${monthKey} already exists.`);
+        }
     };
 
     // Check and create the current month
-    await checkAndCreateMonth(year, month);
+    await checkMonth(year, month);
 
     // Calculate the next month and year
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear = month === 12 ? year + 1 : year;
 
     // Check and create the next month
-    await checkAndCreateMonth(nextYear, nextMonth);
+    await checkMonth(nextYear, nextMonth);
   };
+
+
+  //
+  //
+  /// Creating Task
+  //
+  //
 
   const daysOfWeek = [
     { label: 'Monday', value: 'Monday' },
@@ -177,71 +209,143 @@ const TasksScreen = ({ navigation }) => {
     { label: 'Sunday', value: 'Sunday' },
   ];
   
-  const addTask = (newTask) => {
+  const addTask = async (newTask) => {
     if (!newTask) return;
-    
+  
     console.log(newTask.recurrence);
-
-    if (newTask.recurrence == 'None' || !newTask.recurrence.length) {
-      // No recurrence: Add task only for the selected date
-      setTasks((prevTasks) => {
-        const updatedTasks = {
-          ...prevTasks,
-          [selectedDate]: [...(prevTasks[selectedDate] || []), newTask],
-        };
-        return updatedTasks;
-      });
+  
+    const user = auth.currentUser;
+  
+    if (!user) {
+      console.error("User not authenticated.");
+      return;
+    }
+  
+    if (newTask.recurrence == "None" || !newTask.recurrence.length) {
+      // Handle non-recurring tasks
+      const updatedTasks = {
+        ...tasks,
+        [selectedDate]: [...(tasks[selectedDate] || []), newTask],
+      };
+  
+      setTasks(updatedTasks); // Update local tasks state
       console.log("Added task for:", selectedDate, newTask);
-
+  
+      const day = parseInt(newTask.date.split("-")[2], 10);
+      const weekTag =
+        day <= 7
+          ? "1-7"
+          : day <= 14
+          ? "8-14"
+          : day <= 21
+          ? "15-21"
+          : day <= 28
+          ? "22-28"
+          : "29-end";
+  
+      const monthKey = newTask.date.substring(0, 7);
+  
+      const tasksToUpload = Array.isArray(newTask) ? newTask : [newTask];
+  
+      try {
+        await uploadTasks(monthKey, weekTag, tasksToUpload);
+        console.log(`Task uploaded successfully for date: ${newTask.date}`);
+      } catch (error) {
+        console.error("Error uploading task:", error);
+      }
     } else {
+      // Handle recurring tasks
+      const recurrenceDays = newTask.recurrence.map((day) =>
+        daysOfWeek.find((d) => d.label === day)?.value
+      );
+  
       const recurrenceDate = new Date(); 
-      // Calculate start date
       const startDate = new Date(recurrenceDate.getFullYear(), recurrenceDate.getMonth(), recurrenceDate.getDate());
-    
-      // Check if startDate is in December
+        
       let endDate;
       if (startDate.getMonth() === 11) {
         // If December, set endDate to the last day of January of the next year
-        endDate = new Date(startDate.getFullYear() + 1, 1, 31); // January 31st of next year
+        endDate = new Date(new Date().getFullYear() + 1, 0, 31);// January 31st of next year
+        console.log("Here papi");
       } else {
         // Otherwise, set endDate to the last day of next month
         const nextMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 2, 0);
         endDate = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0); // End of next month
       }
-    
+  
       console.log("Task Range:", { startDate, endDate });
-
-      // Recurrence based on selected days of the week
+  
+      // Generate recurring dates
       const recurringDates = [];
-      const recurrenceDays = newTask.recurrence.map((day) =>
-        daysOfWeek.find((d) => d.label === day)?.value
-      );
-  
-      console.log("Recurrence Days:", recurrenceDays);
-  
-      for (let currentDate = new Date(startDate); currentDate <= endDate; currentDate.setDate(currentDate.getDate() + 1)) {
-        const currentDay = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
+      for (
+        let currentDate = new Date(startDate);
+        currentDate <= endDate;
+        currentDate.setDate(currentDate.getDate() + 1)
+      ) {
+        const currentDay = currentDate.toLocaleDateString("en-US", {
+          weekday: "long",
+        });
         if (recurrenceDays.includes(currentDay)) {
-          recurringDates.push(new Date(currentDate).toISOString().split('T')[0]);
+          recurringDates.push(
+            new Date(currentDate).toISOString().split("T")[0]
+          );
         }
       }
   
-      recurringDates.forEach((date) => {
-        setTasks((prevTasks) => {
-          const updatedTasks = {
-            ...prevTasks,
-            [date]: [...(prevTasks[date] || []), newTask],
-          };
-          //console.log(updatedTasks);
-          return updatedTasks;
-        });
-      });
+      console.log("Recurring Dates:", recurringDates);
   
-      console.log("Created recurring tasks on:", recurringDates);
+      // Update the local tasks state for the calendar view
+      setTasks((prevTasks) => {
+        const updatedTasks = { ...prevTasks };
+  
+        recurringDates.forEach((date) => {
+          if (!updatedTasks[date]) updatedTasks[date] = [];
+          updatedTasks[date].push(newTask);
+        });
+  
+        return updatedTasks;
+      });
+      
+      // Group and upload tasks by month and week
+      const tasksByMonthAndWeek = recurringDates.reduce((acc, date) => {
+        const [year, month, day] = date.split("-");
+        const monthKey = `${year}-${month}`;
+        const weekTag =
+          parseInt(day, 10) <= 7
+            ? "1-7"
+            : parseInt(day, 10) <= 14
+            ? "8-14"
+            : parseInt(day, 10) <= 21
+            ? "15-21"
+            : parseInt(day, 10) <= 28
+            ? "22-28"
+            : "29-end";
+  
+        if (!acc[monthKey]) acc[monthKey] = {};
+        if (!acc[monthKey][weekTag]) acc[monthKey][weekTag] = [];
+  
+        acc[monthKey][weekTag].push({ ...newTask, date });
+  
+        return acc;
+      }, {});
+  
+      try {
+        for (const [monthKey, weeks] of Object.entries(tasksByMonthAndWeek)) {
+          for (const [weekTag, tasksForWeek] of Object.entries(weeks)) {
+            await uploadTasks(monthKey, weekTag, tasksForWeek);
+            console.log(
+              `Recurring tasks uploaded successfully for month: ${monthKey}, week: ${weekTag}`
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error uploading recurring tasks:", error);
+      }
     }
   
     closeBottomSheet(); // Close the bottom sheet after adding the task
   };
+  
   
   
   
