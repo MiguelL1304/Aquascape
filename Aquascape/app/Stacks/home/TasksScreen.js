@@ -60,6 +60,11 @@ const TasksScreen = ({ navigation }) => {
         const currentMonth = today.getMonth() + 1; // Months are 0-indexed in JavaScript
   
         try {
+          setTasks({});
+          
+          //Check for saved recurrence details
+          await checkRecurrenceDoc();
+
           // Ensure tasks for the current and next month exist
           await createTasksForMonthAndNext(currentYear, currentMonth);
   
@@ -95,6 +100,180 @@ const TasksScreen = ({ navigation }) => {
   }, []);
 
   //Firebase
+
+  const checkRecurrenceDoc = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      console.error("User not authenticated.");
+      return;
+    }
+  
+    try {
+      const uid = user.uid;
+      const recurrenceDocRef = doc(firestoreDB, "profile", uid, "tasks", "recurrence");
+  
+      // Check if the `recurrence` document exists
+      const recurrenceDocSnap = await getDoc(recurrenceDocRef);
+      if (!recurrenceDocSnap.exists()) {
+        
+        const recurrenceData = {
+          tasks: [],
+        };
+  
+        await setDoc(recurrenceDocRef, recurrenceData);
+        console.log("Recurrence document created successfully.");
+      } else {
+        console.log("Recurrence document already exists.");
+      }
+    } catch (error) {
+      console.error("Error checking or creating recurrence document:", error);
+    }
+  };
+
+  const saveRecurrentTaskDetails = async (taskDetails) => {
+    const user = auth.currentUser;
+    if (!user) {
+      console.error("User not authenticated.");
+      return;
+    }
+  
+    try {
+      const { title, category, duration, recurrence } = taskDetails;
+  
+      // Ensure the task has all required fields
+      if (!title || !category || !duration || !recurrence) {
+        console.error("Missing required task fields: title, category, duration, or recurrence.");
+        return;
+      }
+
+      // Generate a unique recurrence ID based on the current timestamp
+      const recurrenceID = new Date().getTime().toString();
+  
+      const uid = user.uid;
+      const recurrenceDocRef = doc(firestoreDB, "profile", uid, "tasks", "recurrence");
+  
+      // Add the task details to the `tasks` array in the recurrence document
+      await updateDoc(recurrenceDocRef, {
+        tasks: arrayUnion({ recurrenceID, title, category, duration, recurrence }),
+      });
+  
+      console.log("Recurrent task details saved successfully with recurrenceID:", recurrenceID);
+
+      // Return the recurrenceID so it can be added to the actual task object
+      return recurrenceID;
+    } catch (error) {
+      console.error("Error saving recurrent task details:", error);
+    }
+  };
+
+  // const populateRecurrentTasks = async (year, month) => {
+  //   const user = auth.currentUser;
+  //   if (!user) {
+  //     console.error("User not authenticated.");
+  //     return;
+  //   }
+  
+  //   try {
+  //     const uid = user.uid;
+  //     const recurrenceDocRef = doc(firestoreDB, "profile", uid, "tasks", "recurrence");
+  //     const recurrenceDocSnap = await getDoc(recurrenceDocRef);
+  
+  //     if (!recurrenceDocSnap.exists()) {
+  //       console.log("No recurrence details found.");
+  //       return;
+  //     }
+  
+  //     const recurrenceDetails = recurrenceDocSnap.data().tasks || [];
+  //     console.log("Recurrence details fetched:", recurrenceDetails);
+  
+  //     const daysInMonth = new Date(year, month, 0).getDate(); // Get number of days in the month
+  //     const startDate = new Date(year, month - 1, 1); // First day of the month
+  //     const endDate = new Date(year, month - 1, daysInMonth); // Last day of the month
+  
+  //     // Loop through each recurrence detail
+  //     for (const detail of recurrenceDetails) {
+  //       const { recurrenceID, title, category, duration, recurrence } = detail;
+  
+  //       if (!recurrence || recurrence.length === 0) {
+  //         console.log(`Skipping non-recurrent task with ID ${recurrenceID}`);
+  //         continue;
+  //       }
+  
+  //       // Generate tasks for the month based on recurrence days
+  //       for (
+  //         let currentDate = new Date(startDate);
+  //         currentDate <= endDate;
+  //         currentDate.setDate(currentDate.getDate() + 1)
+  //       ) {
+  //         const currentDay = currentDate.toLocaleDateString("en-US", { weekday: "long" });
+  //         if (recurrence.includes(currentDay)) {
+  //           const formattedDate = currentDate.toISOString().split("T")[0];
+  
+  //           // Create a new task object
+  //           const newTask = {
+  //             date: formattedDate,
+  //             title,
+  //             category,
+  //             duration,
+  //             recurrence,
+  //             recurrenceID,
+  //           };
+  
+  //           // Trigger addTask to save the task
+  //           console.log("Adding recurrent task:", newTask);
+  //           await addTaskRecurrence(newTask, startDate, endDate);
+  //         }
+  //       }
+  //     }
+  
+  //     console.log("Recurrent tasks populated for the month:", `${year}-${String(month).padStart(2, "0")}`);
+  //   } catch (error) {
+  //     console.error("Error populating recurrent tasks:", error);
+  //   }
+  // };
+
+  const populateRecurrentTasks = async (year, month) => {
+    const user = auth.currentUser;
+    if (!user) {
+      console.error("User not authenticated.");
+      return;
+    }
+  
+    try {
+      const uid = user.uid;
+      const recurrenceDocRef = doc(firestoreDB, "profile", uid, "tasks", "recurrence");
+      const recurrenceDocSnap = await getDoc(recurrenceDocRef);
+  
+      if (!recurrenceDocSnap.exists()) {
+        console.log("No recurrence details found.");
+        return;
+      }
+  
+      const recurrenceDetails = recurrenceDocSnap.data().tasks || [];
+      console.log("Recurrence details fetched:", recurrenceDetails);
+  
+      const daysInMonth = new Date(year, month, 0).getDate(); // Get number of days in the month
+      const startDate = new Date(year, month - 1, 1); // First day of the month
+      const endDate = new Date(year, month - 1, daysInMonth); // Last day of the month
+  
+      for (const detail of recurrenceDetails) {
+        const { recurrenceID, title, category, duration, recurrence } = detail;
+  
+        if (!recurrence || recurrence.length === 0) {
+          console.log(`Skipping non-recurrent task with ID ${recurrenceID}`);
+          continue;
+        }
+  
+        console.log("Adding recurrent task:", { title, category, duration, recurrence });
+        await addTaskRecurrence({ title, category, duration, recurrence, recurrenceID }, startDate, endDate);
+      }
+  
+      console.log("Recurrent tasks populated for the month:", `${year}-${String(month).padStart(2, "0")}`);
+    } catch (error) {
+      console.error("Error populating recurrent tasks:", error);
+    }
+  };  
+  
 
   const fetchTasksForCurrentAndNextMonth = async () => {
     const user = auth.currentUser;
@@ -246,6 +425,10 @@ const TasksScreen = ({ navigation }) => {
             // Create the document for the month
             await setDoc(monthTasksRef, weeksData);
             console.log(`Created tasks document for ${monthKey}`);
+
+            // Trigger population of recurrent tasks
+            await populateRecurrentTasks(year, month);
+
         } else {
             console.log(`Tasks document for ${monthKey} already exists.`);
         }
@@ -260,6 +443,9 @@ const TasksScreen = ({ navigation }) => {
 
     // Check and create the next month
     await checkMonth(nextYear, nextMonth);
+
+    // Trigger population for the next month
+    await populateRecurrentTasks(nextYear, nextMonth);
   };
 
 
@@ -325,6 +511,22 @@ const TasksScreen = ({ navigation }) => {
         console.error("Error uploading task:", error);
       }
     } else {
+      
+      //Saves details for future use
+      const recurrenceID = await saveRecurrentTaskDetails({
+        title: newTask.title,
+        category: newTask.category,
+        duration: newTask.duration,
+        recurrence: newTask.recurrence,
+      });
+      
+
+      console.log("Recurrent task details saved with recurrenceID:", recurrenceID);
+
+      // Add recurrenceID to the task object
+      newTask.recurrenceID = recurrenceID;
+      
+
       // Handle recurring tasks
       const recurrenceDays = newTask.recurrence.map((day) =>
         daysOfWeek.find((d) => d.label === day)?.value
@@ -414,6 +616,106 @@ const TasksScreen = ({ navigation }) => {
     }
   
     closeBottomSheet(); // Close the bottom sheet after adding the task
+  };
+
+  const addTaskRecurrence = async (newTask, startDate, endDate) => {
+    if (!newTask) return;
+  
+    console.log(newTask.recurrence);
+  
+    const user = auth.currentUser;
+  
+    if (!user) {
+      console.error("User not authenticated.");
+      return;
+    }
+
+    // Handle recurring tasks
+    const recurrenceDays = newTask.recurrence.map((day) =>
+      daysOfWeek.find((d) => d.label === day)?.value
+    );
+
+    console.log("Task Range:", { startDate, endDate });
+
+    // Generate recurring dates
+    const recurringDates = [];
+    for (
+      let currentDate = new Date(startDate);
+      currentDate <= endDate;
+      currentDate.setDate(currentDate.getDate() + 1)
+    ) {
+      const currentDay = currentDate.toLocaleDateString("en-US", {
+        weekday: "long",
+      });
+      if (recurrenceDays.includes(currentDay)) {
+        recurringDates.push(
+          new Date(currentDate).toISOString().split("T")[0]
+        );
+      }
+    }
+
+    console.log("Recurring Dates:", recurringDates);
+
+    // Update the local tasks state for the calendar view
+    // setTasks((prevTasks) => {
+    //   const updatedTasks = { ...prevTasks };
+
+    //   recurringDates.forEach((date) => {
+    //     if (!updatedTasks[date]) updatedTasks[date] = [];
+
+    //     // Check if the task already exists for this date
+    //     const isDuplicate = updatedTasks[date].some(
+    //       (existingTask) =>
+    //         existingTask.title === newTask.title &&
+    //         existingTask.category === newTask.category &&
+    //         existingTask.duration === newTask.duration &&
+    //         existingTask.recurrenceID === newTask.recurrenceID
+    //     );
+
+    //     if (!isDuplicate) {
+    //       updatedTasks[date].push(newTask);
+    //     }
+    //   });
+
+    //   return updatedTasks;
+    // });
+
+    
+    // Group and upload tasks by month and week
+    const tasksByMonthAndWeek = recurringDates.reduce((acc, date) => {
+      const [year, month, day] = date.split("-");
+      const monthKey = `${year}-${month}`;
+      const weekTag =
+        parseInt(day, 10) <= 7
+          ? "1-7"
+          : parseInt(day, 10) <= 14
+          ? "8-14"
+          : parseInt(day, 10) <= 21
+          ? "15-21"
+          : parseInt(day, 10) <= 28
+          ? "22-28"
+          : "29-end";
+
+      if (!acc[monthKey]) acc[monthKey] = {};
+      if (!acc[monthKey][weekTag]) acc[monthKey][weekTag] = [];
+
+      acc[monthKey][weekTag].push({ ...newTask, date });
+
+      return acc;
+    }, {});
+
+    try {
+      for (const [monthKey, weeks] of Object.entries(tasksByMonthAndWeek)) {
+        for (const [weekTag, tasksForWeek] of Object.entries(weeks)) {
+          await uploadTasks(monthKey, weekTag, tasksForWeek);
+          console.log(
+            `Recurring tasks uploaded successfully for month: ${monthKey}, week: ${weekTag}`
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error uploading recurring tasks:", error);
+    }
   };
   
   
