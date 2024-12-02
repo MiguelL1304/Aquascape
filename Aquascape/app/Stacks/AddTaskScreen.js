@@ -63,7 +63,7 @@ const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
     // const formattedDate = adjustedDate.toISOString().split('T')[0];
 
     const newTask = {
-      id: new Date().getTime(),
+      id: `${new Date().getTime()}${selectedDate.replace(/-/g, '')}`,
       title: taskTitle,
       completed: false,
       category: selectedCategory,

@@ -54,36 +54,38 @@ const TasksScreen = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      const initializeMonths = async () => {
+      const initializeScreen = async () => {
         const today = new Date();
         const currentYear = today.getFullYear();
         const currentMonth = today.getMonth() + 1; // Months are 0-indexed in JavaScript
-    
+  
         try {
+          // Ensure tasks for the current and next month exist
           await createTasksForMonthAndNext(currentYear, currentMonth);
+  
+          // Fetch tasks for the current and next month to populate the calendar
+          await fetchTasksForCurrentAndNextMonth();
         } catch (error) {
-          console.error("Error initializing months:", error);
+          console.error("Error initializing screen:", error);
         }
       };
   
-      initializeMonths();
+      initializeScreen();
     }, [])
   );
 
   const markedDates = useMemo(() => {
     const marked = {
-      [selectedDate]: { selected: true, selectedColor: Colors.primary }
+      [selectedDate]: { selected: true, selectedColor: Colors.primary }, // Mark the selected date
     };
-
-    // Loop through tasks to mark recurring ones
+  
+    // Loop through all tasks and mark their dates
     Object.keys(tasks).forEach((date) => {
-      tasks[date].forEach((task) => {
-        if (task.recurrence !== 'None') {
-          marked[date] = { ...marked[date], marked: true, dotColor: 'black' };
-        }
-      });
+      if (!marked[date]) {
+        marked[date] = { marked: true, dotColor: 'black' }; // Mark the date with a dot
+      }
     });
-
+  
     return marked;
   }, [selectedDate, tasks]);
 
@@ -94,30 +96,98 @@ const TasksScreen = ({ navigation }) => {
 
   //Firebase
 
-  const fetchTasks = async (month) => {
+  const fetchTasksForCurrentAndNextMonth = async () => {
     const user = auth.currentUser;
+  
+    if (!user) {
+      console.error("User not authenticated.");
+      return;
+    }
+  
+    try {
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth() + 1; // Months are 0-indexed in JavaScript
+      const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+      const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear;
 
-    if (user) {
-      try {
-        const uid = user.uid;
-        const tasksDocRef = doc(firestoreDB, "profile", uid, "tasks", month);
+      const uid = user.uid;
+  
+      // Helper function to format month keys
+      const formatMonthKey = (year, month) => `${year}-${String(month).padStart(2, "0")}`;
+  
+      // Fetch tasks for a specific month
+      const fetchTasksByMonth = async (year, month) => {
+        const monthKey = formatMonthKey(year, month);
+        const tasksDocRef = doc(firestoreDB, "profile", uid, "tasks", monthKey);
         const tasksSnap = await getDoc(tasksDocRef);
-
+  
         if (tasksSnap.exists()) {
-          const tasksData = tasksSnap.data();
-          return tasksData; // Tasks grouped by weeks
+          return tasksSnap.data();
         } else {
-          console.log(`No tasks found for the month ${month}.`);
+          console.log(`No tasks found for the month ${monthKey}.`);
           return {};
         }
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
-        throw new Error("Could not fetch tasks.");
-      }
-    } else {
-      throw new Error("User not authenticated.");
+      };
+  
+      // Fetch tasks for current and next month
+      const currentMonthTasks = await fetchTasksByMonth(currentYear, currentMonth);
+      const nextMonthTasks = await fetchTasksByMonth(nextYear, nextMonth);
+  
+      // Combine and process tasks
+      const allTasks = {};
+
+      Object.entries(currentMonthTasks).forEach(([weekTag, tasks]) => {
+        allTasks[weekTag] = [...(allTasks[weekTag] || []), ...tasks];
+      });
+
+      Object.entries(nextMonthTasks).forEach(([weekTag, tasks]) => {
+        allTasks[weekTag] = [...(allTasks[weekTag] || []), ...tasks];
+      });
+
+      // Log the merged tasks for debugging
+      //console.log("Merged allTasks:", JSON.stringify(allTasks, null, 2));
+  
+      setTasks(() => {
+        const updatedTasks = {};
+      
+        for (const weekTag in allTasks) {
+          const weekTasks = allTasks[weekTag]; // Array of tasks for the current weekTag
+      
+          // Iterate over each task in the current week's array
+          for (const task of weekTasks) {
+            const taskDate = task.date;
+      
+            if (!updatedTasks[taskDate]) {
+              updatedTasks[taskDate] = [];
+            }
+      
+            const isDuplicate = updatedTasks[taskDate].some(
+              (existingTask) => existingTask.id === task.id
+            );
+            if (!isDuplicate) {
+              updatedTasks[taskDate].push(task);
+            }
+          }
+        }
+
+        console.log("Updated Tasks:", updatedTasks);
+      
+        return updatedTasks;
+      });
+      
+  
+        
+      
+  
+      console.log("Fetched and updated tasks successfully.");
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
     }
   };
+  
+  
+  
 
   const uploadTasks = async (monthKey, weekTag, tasksToUpload) => {
     const user = auth.currentUser;
@@ -230,6 +300,7 @@ const TasksScreen = ({ navigation }) => {
   
       setTasks(updatedTasks); // Update local tasks state
       console.log("Added task for:", selectedDate, newTask);
+      console.log(tasks);
   
       const day = parseInt(newTask.date.split("-")[2], 10);
       const weekTag =
@@ -266,7 +337,6 @@ const TasksScreen = ({ navigation }) => {
       if (startDate.getMonth() === 11) {
         // If December, set endDate to the last day of January of the next year
         endDate = new Date(new Date().getFullYear() + 1, 0, 31);// January 31st of next year
-        console.log("Here papi");
       } else {
         // Otherwise, set endDate to the last day of next month
         const nextMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 2, 0);
@@ -345,10 +415,6 @@ const TasksScreen = ({ navigation }) => {
   
     closeBottomSheet(); // Close the bottom sheet after adding the task
   };
-  
-  
-  
-  
   
   
 
@@ -533,15 +599,19 @@ const TasksScreen = ({ navigation }) => {
               }}
               keyExtractor={(item) => item[0]}
               contentContainerStyle={{ paddingBottom: 100 }}
-              windowSize={5}
-              initialNumToRender={5}
-              maxToRenderPerBatch={5}
+              // windowSize={5}
+              // initialNumToRender={5}
+              // maxToRenderPerBatch={5}
+              showsVerticalScrollIndicator={true} // Enables the scroll indicator
+              nestedScrollEnabled={true}
+              scrollEnabled={true}
             />
           ) : (
             <Text style={styles.emptyTasksMsg}>
               No tasks for this day.
             </Text>
           )}
+          
         </View>
 
           {/* Bottom Sheet for Adding Tasks */}
@@ -583,6 +653,7 @@ const styles = StyleSheet.create({
   },
   todoContainer: {
     marginTop: 5,
+    flex: 1,
     ...(Platform.OS === 'ios' && { marginTop: -10 }),
   },
   todoTitle: {
