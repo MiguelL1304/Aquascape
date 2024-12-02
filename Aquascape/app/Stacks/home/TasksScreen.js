@@ -387,7 +387,11 @@ const TasksScreen = ({ navigation }) => {
                       <TouchableOpacity
                         key={`${category}-${task.id}`}
                         style={[styles.taskItemContainer, { backgroundColor: categoryColors[task.category] }]}
-                        onPress={() => navigation.navigate('TimerScreen', { taskTitle: task.title, fromTasks: true })}
+                        onPress={() => navigation.navigate('TimerScreen', { 
+                          taskTitle: task.title, 
+                          taskCategory: task.category,
+                          taskDuration: task.duration,
+                          fromTasks: true })}
                       >
                         <CheckBox
                           checked={selectedTasks[task.id]}

@@ -12,19 +12,30 @@ import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { firestoreDB as db, auth } from '../../../firebase/firebase';
 
 const TimerScreen = ({ route }) => {
-  const { taskTitle, fromTasks } = route.params || {};
+  const { taskTitle, taskCategory, taskDuration, fromTasks } = route.params || {};
   const navigation = useNavigation();
 
+  // STATE VARIABLES FOR TASKSCREEN
+  const [duration, setDuration] = useState(taskDuration || 0);
+  const [selectedCategory, setSelectedCategory] = useState(taskCategory || 'Other');
+  const [customTime, setCustomTime] = useState(taskDuration ? String(taskDuration):'0');
+
+  // STATE VARIABLES FOR EVERYTHING ELSE
   const [secondsLeft, setSecondsLeft] = useState(1500);
   const [isActive, setIsActive] = useState(false);
-  const [customTime, setCustomTime] = useState('25');
   const [shells, setShells] = useState(0);
   const [totalTimeInSeconds, setTotalTimeInSeconds] = useState(1500);
   const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [isCategoryPickerVisible, setIsCategoryPickerVisible] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('other');
-
+  
   const categories = ['Work', 'Personal', 'Fitness', 'Study', 'Leisure', 'Other'];
+
+  // FOR TESTING, DELETE LATER
+  useEffect(() => {
+    if (fromTasks) {
+      console.log(`Navigated from TasksScreen: Title=${taskTitle}, Category=${taskCategory}, Duration=${taskDuration}`);
+    }
+  }, [fromTasks, taskTitle, taskCategory, taskDuration]);
 
   useEffect(() => {
     let interval = null;
@@ -78,8 +89,6 @@ const TimerScreen = ({ route }) => {
     };
   }, [isActive, secondsLeft]);
   
-  
-
   const startTimer = () => {
     const timeInMinutes = parseInt(customTime, 10) || 25;
     const timeInSeconds = timeInMinutes * 60;
@@ -113,8 +122,6 @@ const TimerScreen = ({ route }) => {
     );
   };
   
-  
-
   const resetTimerStates = () => {
     setIsActive(false);
     setSecondsLeft(1500);
