@@ -53,14 +53,22 @@ const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
       Alert.alert('Missing Input', 'Please select a recurrence for the task.');
       return;
     }
-    
+
+    // const localDate = new Date(selectedDate);
+    // const adjustedDate = new Date(
+    //   localDate.getFullYear(),
+    //   localDate.getMonth(),
+    //   localDate.getDate()
+    // );
+    // const formattedDate = adjustedDate.toISOString().split('T')[0];
+
     const newTask = {
       id: new Date().getTime(),
       title: taskTitle,
       completed: false,
       category: selectedCategory,
       recurrence: recurrence,
-      selectedDates: recurrence.includes('Custom') ? selectedDates : [], // Save custom dates if selected
+      date: selectedDate,
       duration: duration,
     };
 
