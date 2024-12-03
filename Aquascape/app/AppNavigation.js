@@ -16,7 +16,6 @@ import TestScreen from './Stacks/TestScreen';
 import StoreScreen from './Stacks/StoreScreen';
 import AquariumScreen from './Stacks/home/AquariumScreen';
 import TasksScreen from './Stacks/home/TasksScreen';
-import AddTaskScreen from './Stacks/AddTaskScreen';
 import TimerScreen from './Stacks/home/TimerScreen';
 import AchievementsScreen from './Stacks/AchievementsScreen';
 import BadgesScreen from './Stacks/BadgesScreen';
@@ -156,11 +155,11 @@ export default function AppNavigation() {
           component={TasksScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen
+        {/* <Stack.Screen
           name="AddTaskScreen" 
           component={AddTaskScreen}
           options={{ headerShown: false }}
-        />
+        /> */}
         <Stack.Screen
           name="TimerScreen"
           component={TimerScreen}

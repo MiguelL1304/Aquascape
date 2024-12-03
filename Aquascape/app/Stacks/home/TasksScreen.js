@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, FlatList, TextInput, Button,
   TouchableOpacity, ScrollView, Platform, Keyboard } from 'react-native';
 import { ExpandableCalendar, CalendarProvider } from 'react-native-calendars';
 import { CheckBox } from 'react-native-elements';
-import AddTaskScreen from '../AddTaskScreen';
+import AddTask from '../menus/AddTask';
+import EditTask from '../menus/EditTask';
 import { BottomSheetModal, BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -12,9 +13,10 @@ import { auth, firestoreDB } from "../../../firebase/firebase";
 import { updateTaskCount, updateTimeLogged } from "../MyStatsScreen";
 
 
-//Styling
+//Styling and others
 import Elements from '../../../constants/Elements';
 import Colors from '../../../constants/Colors';
+import LoadingOverlay from "../../../constants/LoadingOverlay";
 
 // Category colors
 const categoryColors = {
@@ -46,9 +48,13 @@ const TasksScreen = ({ navigation }) => {
   const [tasks, setTasks] = useState({});
   const [newTask, setNewTask] = useState('');
   const bottomSheetRef = useRef(null);
+  const editBottomSheetRef = useRef(null);
   const sheetRef = useRef(null);
   const [selectedTasks, setSelectedTasks] = useState({});
   const { minDate, maxDate } = getMinMaxDates();
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     console.log('Initial selectedDate:', selectedDate);
@@ -62,8 +68,9 @@ const TasksScreen = ({ navigation }) => {
         const currentMonth = today.getMonth() + 1; // Months are 0-indexed in JavaScript
   
         try {
+          setLoading(true); 
           setTasks({});
-          
+
           //Check for saved recurrence details
           await checkRecurrenceDoc();
 
@@ -74,6 +81,8 @@ const TasksScreen = ({ navigation }) => {
           await fetchTasksForCurrentAndNextMonth();
         } catch (error) {
           console.error("Error initializing screen:", error);
+        } finally {
+          setLoading(false); // Hide loading overlay when done
         }
       };
   
@@ -167,72 +176,6 @@ const TasksScreen = ({ navigation }) => {
       console.error("Error saving recurrent task details:", error);
     }
   };
-
-  // const populateRecurrentTasks = async (year, month) => {
-  //   const user = auth.currentUser;
-  //   if (!user) {
-  //     console.error("User not authenticated.");
-  //     return;
-  //   }
-  
-  //   try {
-  //     const uid = user.uid;
-  //     const recurrenceDocRef = doc(firestoreDB, "profile", uid, "tasks", "recurrence");
-  //     const recurrenceDocSnap = await getDoc(recurrenceDocRef);
-  
-  //     if (!recurrenceDocSnap.exists()) {
-  //       console.log("No recurrence details found.");
-  //       return;
-  //     }
-  
-  //     const recurrenceDetails = recurrenceDocSnap.data().tasks || [];
-  //     console.log("Recurrence details fetched:", recurrenceDetails);
-  
-  //     const daysInMonth = new Date(year, month, 0).getDate(); // Get number of days in the month
-  //     const startDate = new Date(year, month - 1, 1); // First day of the month
-  //     const endDate = new Date(year, month - 1, daysInMonth); // Last day of the month
-  
-  //     // Loop through each recurrence detail
-  //     for (const detail of recurrenceDetails) {
-  //       const { recurrenceID, title, category, duration, recurrence } = detail;
-  
-  //       if (!recurrence || recurrence.length === 0) {
-  //         console.log(`Skipping non-recurrent task with ID ${recurrenceID}`);
-  //         continue;
-  //       }
-  
-  //       // Generate tasks for the month based on recurrence days
-  //       for (
-  //         let currentDate = new Date(startDate);
-  //         currentDate <= endDate;
-  //         currentDate.setDate(currentDate.getDate() + 1)
-  //       ) {
-  //         const currentDay = currentDate.toLocaleDateString("en-US", { weekday: "long" });
-  //         if (recurrence.includes(currentDay)) {
-  //           const formattedDate = currentDate.toISOString().split("T")[0];
-  
-  //           // Create a new task object
-  //           const newTask = {
-  //             date: formattedDate,
-  //             title,
-  //             category,
-  //             duration,
-  //             recurrence,
-  //             recurrenceID,
-  //           };
-  
-  //           // Trigger addTask to save the task
-  //           console.log("Adding recurrent task:", newTask);
-  //           await addTaskRecurrence(newTask, startDate, endDate);
-  //         }
-  //       }
-  //     }
-  
-  //     console.log("Recurrent tasks populated for the month:", `${year}-${String(month).padStart(2, "0")}`);
-  //   } catch (error) {
-  //     console.error("Error populating recurrent tasks:", error);
-  //   }
-  // };
 
   const populateRecurrentTasks = async (year, month) => {
     const user = auth.currentUser;
@@ -481,14 +424,18 @@ const TasksScreen = ({ navigation }) => {
   
     if (newTask.recurrence == "None" || !newTask.recurrence.length) {
       // Handle non-recurring tasks
+      const taskWithId = {
+        ...newTask,
+        id: `${new Date().getTime()}${selectedDate.replace(/-/g, '')}`,
+      };
+
       const updatedTasks = {
         ...tasks,
-        [selectedDate]: [...(tasks[selectedDate] || []), newTask],
+        [selectedDate]: [...(tasks[selectedDate] || []), taskWithId],
       };
   
       setTasks(updatedTasks); // Update local tasks state
-      console.log("Added task for:", selectedDate, newTask);
-      console.log(tasks);
+      console.log("Added task for:", selectedDate, taskWithId);
   
       const day = parseInt(newTask.date.split("-")[2], 10);
       const weekTag =
@@ -504,11 +451,11 @@ const TasksScreen = ({ navigation }) => {
   
       const monthKey = newTask.date.substring(0, 7);
   
-      const tasksToUpload = Array.isArray(newTask) ? newTask : [newTask];
+      const tasksToUpload = Array.isArray(taskWithId) ? taskWithId : [taskWithId];
   
       try {
         await uploadTasks(monthKey, weekTag, tasksToUpload);
-        console.log(`Task uploaded successfully for date: ${newTask.date}`);
+        console.log(`Task uploaded successfully for date: ${taskWithId.date}`);
 
         await updateTaskCount(user.uid, newTask, "add");
         console.log("TASK COUNT UPDATED IN STATS!!!");
@@ -601,7 +548,11 @@ const TasksScreen = ({ navigation }) => {
         if (!acc[monthKey]) acc[monthKey] = {};
         if (!acc[monthKey][weekTag]) acc[monthKey][weekTag] = [];
   
-        acc[monthKey][weekTag].push({ ...newTask, date });
+        acc[monthKey][weekTag].push({
+          ...newTask,
+          date,
+          id: `${new Date().getTime()}${date.replace(/-/g, '')}`,
+        });
   
         return acc;
       }, {});
@@ -666,31 +617,6 @@ const TasksScreen = ({ navigation }) => {
 
     console.log("Recurring Dates:", recurringDates);
 
-    // Update the local tasks state for the calendar view
-    // setTasks((prevTasks) => {
-    //   const updatedTasks = { ...prevTasks };
-
-    //   recurringDates.forEach((date) => {
-    //     if (!updatedTasks[date]) updatedTasks[date] = [];
-
-    //     // Check if the task already exists for this date
-    //     const isDuplicate = updatedTasks[date].some(
-    //       (existingTask) =>
-    //         existingTask.title === newTask.title &&
-    //         existingTask.category === newTask.category &&
-    //         existingTask.duration === newTask.duration &&
-    //         existingTask.recurrenceID === newTask.recurrenceID
-    //     );
-
-    //     if (!isDuplicate) {
-    //       updatedTasks[date].push(newTask);
-    //     }
-    //   });
-
-    //   return updatedTasks;
-    // });
-
-    
     // Group and upload tasks by month and week
     const tasksByMonthAndWeek = recurringDates.reduce((acc, date) => {
       const [year, month, day] = date.split("-");
@@ -709,7 +635,14 @@ const TasksScreen = ({ navigation }) => {
       if (!acc[monthKey]) acc[monthKey] = {};
       if (!acc[monthKey][weekTag]) acc[monthKey][weekTag] = [];
 
-      acc[monthKey][weekTag].push({ ...newTask, date });
+      // Generate unique ID for this specific task
+      const taskWithUniqueId = {
+        ...newTask,
+        date,
+        id: `${new Date().getTime()}${date.replace(/-/g, '')}`,
+      };
+
+      acc[monthKey][weekTag].push(taskWithUniqueId);
 
       return acc;
     }, {});
@@ -727,6 +660,22 @@ const TasksScreen = ({ navigation }) => {
       console.error("Error uploading recurring tasks:", error);
     }
   };
+
+  const saveUpdatedTask = (updatedTask) => {
+    setTasks((prevTasks) => {
+      const updatedTasks = { ...prevTasks };
+      const date = updatedTask.date;
+  
+      if (updatedTasks[date]) {
+        updatedTasks[date] = updatedTasks[date].map((task) =>
+          task.id === updatedTask.id ? updatedTask : task
+        );
+      }
+  
+      return updatedTasks;
+    });
+    closeEditBottomSheet();
+  };
   
   
 
@@ -736,6 +685,16 @@ const TasksScreen = ({ navigation }) => {
 
   const openBottomSheet = () => {
     bottomSheetRef.current?.present();
+  };
+
+  const closeEditBottomSheet = () => {
+    setSelectedTaskId(null);
+    editBottomSheetRef.current?.dismiss();
+  };
+
+  const openEditBottomSheet = (taskId) => {
+    setSelectedTaskId(taskId);
+    editBottomSheetRef.current?.present();
   };
 
   const toggleTaskCompletion = async (taskId) => {
@@ -799,6 +758,7 @@ const TasksScreen = ({ navigation }) => {
 
   return (
     <BottomSheetModalProvider>
+    {loading && <LoadingOverlay message="Loading..." />}
     <CalendarProvider
       date={selectedDate}
       minDate={minDate}
@@ -847,7 +807,7 @@ const TasksScreen = ({ navigation }) => {
                 !hasSelectedTasks && styles.disabledButtonText
               ]}
             >
-              Clear Completed Tasks
+              Clear
             </Text>
           </TouchableOpacity>
 
@@ -868,47 +828,58 @@ const TasksScreen = ({ navigation }) => {
                       {category}
                     </Text>
                     {tasksForCategory.map((task) => (
-                      <TouchableOpacity
-                        key={`${category}-${task.id}`}
-                        style={[styles.taskItemContainer, { backgroundColor: categoryColors[task.category] }]}
-                        onPress={() => navigation.navigate('TimerScreen', { 
-                          taskTitle: task.title, 
-                          taskCategory: task.category,
-                          taskDuration: task.duration,
-                          fromTasks: true })}
+                      <View
+                        key={`${category}-${task.id}`}          
+                        style={styles.taskContainer}
                       >
-                        <CheckBox
-                          checked={selectedTasks[task.id]}
-                          onPress={() => toggleSelectTask(task.id)}
-                          checkedColor="black"
-                          uncheckedColor="white"
-                          containerStyle={{ margin: 5, padding: 0 }}
-                        />
-                        <View style={styles.taskTextContainer}>
-                          <Text
-                            style={[
-                              styles.taskItem,
-                              (task.completed || selectedTasks[task.id]) && styles.taskCompleted
-                            ]}
-                          >
-                            {task.title}{' '} 
-                            {task.duration ? (
-                              <Text style={[
-                                styles.taskDuration,
-                                (task.completed || selectedTasks[task.id]) && styles.taskDurationSelected
+                        <TouchableOpacity            
+                          style={[styles.taskItemContainer, { backgroundColor: categoryColors[task.category] }]}
+                          onPress={() => navigation.navigate('TimerScreen', { 
+                            taskTitle: task.title, 
+                            taskCategory: task.category,
+                            taskDuration: task.duration,
+                            fromTasks: true })}
+                        >
+                          <CheckBox
+                            checked={selectedTasks[task.id]}
+                            onPress={() => toggleSelectTask(task.id)}
+                            checkedColor="black"
+                            uncheckedColor="white"
+                            containerStyle={{ margin: 5, padding: 0 }}
+                          />
+                          <View style={styles.taskTextContainer}>
+                            <Text
+                              style={[
+                                styles.taskItem,
+                                (task.completed || selectedTasks[task.id]) && styles.taskCompleted
                               ]}
-                              >
-                              ({task.duration} mins)
+                            >
+                              {task.title}{' '} 
+                              {task.duration ? (
+                                <Text style={[
+                                  styles.taskDuration,
+                                  (task.completed || selectedTasks[task.id]) && styles.taskDurationSelected
+                                ]}
+                                >
+                                ({task.duration} mins)
+                              </Text>
+                              ) : (
+                                ''
+                              )}
                             </Text>
-                            ) : (
-                              ''
-                            )}
-                          </Text>
-                          <Text style={styles.taskRecurrence}>
-                            {task.recurrence !== 'None' && task.recurrence !== 'Never' ? task.recurrence : ''}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
+                            <Text style={styles.taskRecurrence}>
+                              {task.recurrence !== 'None' && task.recurrence !== 'Never' ? task.recurrence : ''}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.editButtonContainer} 
+                          onPress={() => openEditBottomSheet(task.id)} // Open edit bottom sheet
+                        >
+                          <Text style={styles.editButtonText}>Edit</Text>
+                        </TouchableOpacity>
+                      </View>
                     ))}
                   </View>
                 );
@@ -938,13 +909,29 @@ const TasksScreen = ({ navigation }) => {
             onDismiss={closeBottomSheet}
           >
             <ScrollView>
-              <AddTaskScreen
+              <AddTask
                 selectedDate={selectedDate}
                 addTaskCallback={addTask}
                 closeBottomSheet={closeBottomSheet}
               />
             </ScrollView>
           </BottomSheetModal>
+
+          {/* Bottom Sheet for Editing Tasks */}
+          <BottomSheetModal
+            ref={editBottomSheetRef}
+            snapPoints={['75%']}
+            backgroundStyle={{ backgroundColor: Colors.background }}
+            onDismiss={closeEditBottomSheet}
+          >
+            <EditTask
+              taskId={selectedTaskId} // Pass the selected taskId
+              tasks={tasks} // Pass the current tasks state
+              closeBottomSheet={closeEditBottomSheet}
+              saveUpdatedTask={saveUpdatedTask} // Define this to handle saving changes
+            />
+          </BottomSheetModal>
+
         </View>
       </CalendarProvider>
       </BottomSheetModalProvider>
@@ -977,15 +964,16 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 10,
     textAlign: 'center',
+    fontWeight: 'bold',
   },
   addButton: {
     padding: 10,
   },
   deleteButton: {
+    alignSelf: 'flex-end',
     marginTop: 10,
-    marginStart: 185,
-    width: '50%',
-    ...(Platform.OS === 'ios' && { marginStart: 175, width: '55%' }),
+    width: '30%',
+    ...(Platform.OS === 'ios' && { width: '30%' }),
   },
   deleteButtonText: {
     color: Colors.primary,
@@ -1008,7 +996,7 @@ const styles = StyleSheet.create({
   taskItemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: "100%",
+    width: "87%",
     marginBottom: 10,
     padding: 10,
     borderRadius: 5,
@@ -1047,6 +1035,28 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 10,
     marginBottom: 5,
+  },
+  taskContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  editButtonContainer: {
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 5,
+    height: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    padding: 10,
+    borderRadius: 5,
+  },
+  editButtonText: {
+    color: '#3498db',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });
 
