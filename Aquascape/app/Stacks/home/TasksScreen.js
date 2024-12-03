@@ -388,9 +388,6 @@ const TasksScreen = ({ navigation }) => {
 
     // Check and create the next month
     await checkMonth(nextYear, nextMonth);
-
-    // Trigger population for the next month
-    await populateRecurrentTasks(nextYear, nextMonth);
   };
 
 
@@ -517,18 +514,6 @@ const TasksScreen = ({ navigation }) => {
       }
   
       console.log("Recurring Dates:", recurringDates);
-  
-      // Update the local tasks state for the calendar view
-      setTasks((prevTasks) => {
-        const updatedTasks = { ...prevTasks };
-  
-        recurringDates.forEach((date) => {
-          if (!updatedTasks[date]) updatedTasks[date] = [];
-          updatedTasks[date].push(newTask);
-        });
-  
-        return updatedTasks;
-      });
       
       // Group and upload tasks by month and week
       const tasksByMonthAndWeek = recurringDates.reduce((acc, date) => {
@@ -556,6 +541,37 @@ const TasksScreen = ({ navigation }) => {
   
         return acc;
       }, {});
+
+
+      // Flatten tasks with IDs for local state update
+      const tasksWithIDs = Object.values(tasksByMonthAndWeek)
+        .flatMap((weeks) => Object.values(weeks))
+        .flat();
+
+      // Update the local tasks state for the calendar view
+      setTasks((prevTasks) => {
+        const updatedTasks = { ...prevTasks };
+  
+        tasksWithIDs.forEach((task) => {
+          if (!updatedTasks[task.date]) updatedTasks[task.date] = [];
+          updatedTasks[task.date].push(task);
+        });
+  
+        return updatedTasks;
+      });
+
+      // Update the local tasks state for the calendar view
+      // setTasks((prevTasks) => {
+      //   const updatedTasks = { ...prevTasks };
+  
+      //   recurringDates.forEach((date) => {
+      //     if (!updatedTasks[date]) updatedTasks[date] = [];
+      //     updatedTasks[date].push(newTask);
+      //   });
+  
+      //   return updatedTasks;
+      // });
+
   
       try {
         for (const [monthKey, weeks] of Object.entries(tasksByMonthAndWeek)) {
@@ -617,7 +633,7 @@ const TasksScreen = ({ navigation }) => {
 
     console.log("Recurring Dates:", recurringDates);
 
-    // Group and upload tasks by month and week
+    // Group and upload tasks by month and week 
     const tasksByMonthAndWeek = recurringDates.reduce((acc, date) => {
       const [year, month, day] = date.split("-");
       const monthKey = `${year}-${month}`;
@@ -639,6 +655,7 @@ const TasksScreen = ({ navigation }) => {
       const taskWithUniqueId = {
         ...newTask,
         date,
+        completed: false,
         id: `${new Date().getTime()}${date.replace(/-/g, '')}`,
       };
 
@@ -661,22 +678,72 @@ const TasksScreen = ({ navigation }) => {
     }
   };
 
-  const saveUpdatedTask = (updatedTask) => {
-    setTasks((prevTasks) => {
-      const updatedTasks = { ...prevTasks };
-      const date = updatedTask.date;
+  const saveUpdatedTask = async (updatedTask) => {
+    const user = auth.currentUser;
   
-      if (updatedTasks[date]) {
-        updatedTasks[date] = updatedTasks[date].map((task) =>
-          task.id === updatedTask.id ? updatedTask : task
-        );
+    if (!user) {
+      console.error("User not authenticated.");
+      return;
+    }
+  
+    try {
+      const uid = user.uid;
+      const { id, date } = updatedTask;
+  
+      // Determine month and week tag from the task's date
+      const [year, month, day] = date.split("-");
+      const monthKey = `${year}-${month}`;
+      const weekTag =
+        parseInt(day, 10) <= 7
+          ? "1-7"
+          : parseInt(day, 10) <= 14
+          ? "8-14"
+          : parseInt(day, 10) <= 21
+          ? "15-21"
+          : parseInt(day, 10) <= 28
+          ? "22-28"
+          : "29-end";
+  
+      // Reference to the Firestore document for the specific month
+      const tasksDocRef = doc(firestoreDB, "profile", uid, "tasks", monthKey);
+      const tasksSnap = await getDoc(tasksDocRef);
+  
+      if (!tasksSnap.exists()) {
+        console.error("Task document does not exist in Firestore.");
+        return;
       }
   
-      return updatedTasks;
-    });
-    closeEditBottomSheet();
-  };
+      // Fetch tasks for the specific week
+      const weekTasks = tasksSnap.data()[weekTag] || [];
+      const updatedWeekTasks = weekTasks.map((task) =>
+        task.id === id ? updatedTask : task
+      );
   
+      // Update Firestore with the modified tasks
+      await updateDoc(tasksDocRef, {
+        [weekTag]: updatedWeekTasks,
+      });
+  
+      console.log("Task successfully updated in Firestore.");
+  
+      // Update the local state
+      setTasks((prevTasks) => {
+        const updatedTasks = { ...prevTasks };
+  
+        if (updatedTasks[date]) {
+          updatedTasks[date] = updatedTasks[date].map((task) =>
+            task.id === id ? updatedTask : task
+          );
+        }
+  
+        return updatedTasks;
+      });
+  
+      closeEditBottomSheet();
+    } catch (error) {
+      console.error("Error updating task in Firestore:", error);
+    }
+  };
   
 
   const closeBottomSheet = () => {
@@ -694,6 +761,7 @@ const TasksScreen = ({ navigation }) => {
 
   const openEditBottomSheet = (taskId) => {
     setSelectedTaskId(taskId);
+    console.log(taskId);
     editBottomSheetRef.current?.present();
   };
 
