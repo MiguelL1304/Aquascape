@@ -13,8 +13,8 @@ import { firestoreDB as db, auth } from '../../../firebase/firebase';
 
 const TimerScreen = ({ route }) => {
   const { task, fromTasks } = route.params || {};
-  const taskTitle = task?.title || "No Title";
-  const taskCategory = task?.category || "No category";
+  const taskTitle = task?.title || "";
+  const taskCategory = task?.category || "Unset";
   const taskDuration = task?.duration || 0;
 
   //console.log("Task received in TimerScreen:", task);
@@ -93,6 +93,24 @@ const TimerScreen = ({ route }) => {
       if (unsubscribe) unsubscribe(); 
     };
   }, [isActive, secondsLeft]);
+
+    // Determine Button Text
+  const timerButtonText = (() => {
+    if (!isActive && customTime === "0") return "Set Timer";
+    if (!isActive) return "Start Timer";
+    return "Stop Timer";
+  })();
+
+    // Handle Button Action
+  const handleButtonPress = () => {
+    if (timerButtonText === "Set Timer") {
+      setIsPickerVisible(true); // Open the duration picker
+    } else if (timerButtonText === "Start Timer") {
+      startTimer();
+    } else if (timerButtonText === "Stop Timer") {
+      stopTimer();
+    }
+  };
   
   const startTimer = () => {
     const timeInMinutes = parseInt(customTime, 10) || 25;
@@ -347,30 +365,21 @@ const handleTimerComplete = async (earnedShells) => {
         ]}
         disabled={isActive}
       >
-        <Text style={[styles.categoryButtonText, isActive && styles.disabledCategoryButtonText]}>
+        <Text style={[
+          styles.categoryButtonText, 
+          isActive && styles.disabledCategoryButtonText
+          ]}>
           {selectedCategory ? `Category: ${selectedCategory}` : 'Pick Category'}
         </Text>
       </TouchableOpacity>
 
       {/* Timer Button */}
       <TouchableOpacity
-        onPress={() => {
-          if (!isActive && customTime === '25') {
-            setIsPickerVisible(true);
-          } else if (!isActive) {
-            startTimer();
-          } else {
-            stopTimer();
-          }
-        }}
+        onPress={handleButtonPress}
         style={styles.setTimerBtnContainer}
       >
         <Text style={styles.setTimerText}>
-          {isActive
-            ? 'Stop Timer'
-            : customTime === '25'
-            ? 'Set Timer'
-            : 'Start Timer'}
+          {timerButtonText}
         </Text>
       </TouchableOpacity>
 
