@@ -10,6 +10,8 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { auth, firestoreDB } from "../../../firebase/firebase";
+import { updateTaskCount, updateTimeLogged } from "../MyStatsScreen";
+
 
 //Styling and others
 import Elements from '../../../constants/Elements';
@@ -454,6 +456,9 @@ const TasksScreen = ({ navigation }) => {
       try {
         await uploadTasks(monthKey, weekTag, tasksToUpload);
         console.log(`Task uploaded successfully for date: ${taskWithId.date}`);
+
+        await updateTaskCount(user.uid, newTask, "add");
+        console.log("TASK COUNT UPDATED IN STATS!!!");
       } catch (error) {
         console.error("Error uploading task:", error);
       }
@@ -559,8 +564,13 @@ const TasksScreen = ({ navigation }) => {
             console.log(
               `Recurring tasks uploaded successfully for month: ${monthKey}, week: ${weekTag}`
             );
+
+            for (const task of tasksForWeek) {
+              await updateTaskCount(user.uid, task, "add");
+            }
           }
         }
+        console.log("task count updated for all recurring tasks!")
       } catch (error) {
         console.error("Error uploading recurring tasks:", error);
       }
