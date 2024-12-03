@@ -18,6 +18,18 @@ const StoreScreen = ({ navigation }) => {
     { id: '10', name: '', image: require("../../assets/cat.gif"), price: '100', unlocked: false, requirement: { type: 'productivity', hours: 24 } },
   ]);
 
+  const [backgroundItems, setBackgroundItems] = useState([
+    { id: "11", name: "Desert", image: require("../../assets/backgrounds/desert-bg.png"), price: 200, unlocked: true },
+    { id: "12", name: "Futuristic City", image: require("../../assets/backgrounds/futuristic-city-bg.png"), price: 300, unlocked: false },
+    { id: "13", name: "Jungle", image: require("../../assets/backgrounds/jungle-bg.png"), price: 250, unlocked: false },
+    { id: "14", name: "Space", image: require("../../assets/backgrounds/space-bg.png"), price: 350, unlocked: false },
+  ]);
+
+  const [selectedCategory, setSelectedCategory] = useState("Fish");
+  const filteredItems = selectedCategory === "Fish" ? items : backgroundItems;
+
+  
+
   const [seashells, setSeashells] = useState(0);
   const [userFish, setUserFish] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -259,9 +271,31 @@ useEffect(() => {
       {/* Header */}
       <Text style={styles.header}>SHOP</Text>
 
+      <View style={styles.categoryContainer}>
+  <TouchableOpacity
+    style={[
+      styles.categoryButton,
+      selectedCategory === "Fish" && styles.activeCategoryButton,
+    ]}
+    onPress={() => setSelectedCategory("Fish")}
+  >
+    <Text style={styles.categoryButtonText}>Fish</Text>
+  </TouchableOpacity>
+  <TouchableOpacity
+    style={[
+      styles.categoryButton,
+      selectedCategory === "Backgrounds" && styles.activeCategoryButton,
+    ]}
+    onPress={() => setSelectedCategory("Backgrounds")}
+  >
+    <Text style={styles.categoryButtonText}>Backgrounds</Text>
+  </TouchableOpacity>
+</View>
+
+
       {/* FlatList rendering */}
       <FlatList
-        data={items}
+        data={filteredItems}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         numColumns={2}
@@ -477,6 +511,25 @@ const styles = StyleSheet.create({
     textAlign: "center", // Center the text
     textTransform: "uppercase", // Optional: Make the text uppercase
     letterSpacing: 1.5, // Optional: Add spacing between letters
+  },
+  categoryContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginVertical: 10,
+  },
+  categoryButton: {
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: "#FFDCA4",
+    width: "40%",
+    alignItems: "center",
+  },
+  activeCategoryButton: {
+    backgroundColor: "#FF9500",
+  },
+  categoryButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
   
   

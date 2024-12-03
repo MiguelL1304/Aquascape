@@ -9,6 +9,10 @@ import conch from "../../assets/Conch.png";
 import starfish from "../../assets/starfish.png";
 import cat from "../../assets/cat.gif";
 import coral from "../../assets/coral.png";
+import wave from "../../assets/wave.png";
+import percy from "../../assets/percy.png";
+import poseidon from "../../assets/poseidon.png";
+import neptune from "../../assets/neptune.png";
 
 const AchievementsScreen = () => {
     const [earnedBadges, setEarnedBadges] = useState([]);
@@ -25,10 +29,18 @@ const AchievementsScreen = () => {
     const monthYearFormat = `${currentYear}-${currentMonth < 10 ? `0${currentMonth}` : currentMonth}`;
 
     const badges = [
-        { title: "Coral", description: "Purchase 1 fish", image: coral },
-        { title: "Conch", description: "Complete 10 tasks", image: conch },
-        { title: "Starfish", description: "Complete 10 hours of productivity", image: starfish },
-        { title: "Fitness task", description: "Complete 5 fitness tasks", image: cat },
+        { title: "Lotus", description: "Earn 500 seashells", image: require("../../assets/lotus.png") },
+        { title: "Conch", description: "Complete 5 personal tasks", image: conch },
+        { title: "Starfish", description: "Complete 5 total tasks in a month", image: starfish },
+        { title: "Coral", description: "Log 5 hours in a month", image: coral },
+        { title: "Wave", description: "Complete 25 total tasks in a year", image: wave },
+        { title: "Majesty", description: "Log 24 hours in a year", image: require("../../assets/prettyFish.png") },
+        { title: "Power Crab", description: "Complete 3 fitness tasks in a month", image: require("../../assets/crab.png")},
+        { title: "Gym Shark", description: "Complete 10 fitness tasks in a year", image: require("../../assets/workoutShark.png") },
+        { title: "Nerd Fish", description: "Complete 5 study tasks in a month", image: require("../../assets/studyFish.png") },
+        { title: "Book Fish", description: "Complete 15 study tasks in a year", image: require("../../assets/readFish.png") },
+        { title: "Worker Whale", description: "Complete 3 work tasks in a month", image: require("../../assets/workingWhale.png") },
+        { title: "Business Turtle", description: "Complete 8 work tasks in a year", image: require("../../assets/businessTurtle.png") },
     ];
 
     useEffect(() => {
@@ -95,17 +107,75 @@ const AchievementsScreen = () => {
         const newShownAlerts = [...shownAlerts];
 
         // Badge conditions
-        if (monthlyStats.totalTimeLogged >= 600 && !newBadges.includes("Starfish")) {
+        // lotus --> earn xx shells
+        if (userData.seashells >= 500 && !newBadges.includes("Lotus")) {
+            newBadges.push("Lotus");
+            newlyUnlocked.push("Lotus");
+        }
+
+        // conch --> complete 5 personal tasks in a year
+        if (yearlyStats.categoryBreakdown?.Personal >= 5 && !newBadges.includes("Conch")) {
+            newBadges.push("Conch");
+            newlyUnlocked.push("Conch");
+        }
+
+        // starfish --> complete xx total tasks in a month
+        if (monthlyStats.completedTasks >= 5 && !newBadges.includes("Starfish")) {
             newBadges.push("Starfish");
             newlyUnlocked.push("Starfish");
         }
-        if (yearlyStats.completedTasks >= 10 && !newBadges.includes("Coral")) {
+
+        // coral --> complete xx total minutes in a month
+        if (monthlyStats.totalTimeLogged >= 300 && !newBadges.includes("Coral")) {
             newBadges.push("Coral");
             newlyUnlocked.push("Coral");
         }
-        if (monthlyStats.categoryBreakdown?.Fitness >= 5 && !newBadges.includes("Fitness task")) {
-            newBadges.push("Fitness task");
-            newlyUnlocked.push("Fitness task");
+        // wave --> complete xx total tasks in a year
+        if (yearlyStats.completedTasks >= 25 && !newBadges.includes("Wave")) {
+            newBadges.push("Wave");
+            newlyUnlocked.push("Wave");
+        }
+
+        // pretty fish --> complete xx total minutes in a year
+        if (yearlyStats.totalTimeLogged >= 1440 && !newBadges.includes("Majesty")) {
+            newBadges.push("Majesty");
+            newlyUnlocked.push("Majesty");
+        }
+
+        // fit crab --> complete xx fitness tasks in a month
+        if (monthlyStats.categoryBreakdown?.Fitness >= 3 && !newBadges.includes("Power Crab")) {
+            newBadges.push("Power Crab");
+            newlyUnlocked.push("Power Crab");
+        }
+
+        // fit shark --> complete xx fitness tasks in a year
+        if (yearlyStats.categoryBreakdown?.Fitness >= 10 && !newBadges.includes("Gym Shark")) {
+            newBadges.push("Gym Shark");
+            newlyUnlocked.push("Gym Shark");
+        }
+        
+        // study fish --> complete xx study tasks in a month
+        if (monthlyStats.categoryBreakdown?.Study >= 5 && !newBadges.includes("Nerd Fish")) {
+            newBadges.push("Nerd Fish");
+            newlyUnlocked.push("Nerd Fish");
+        }
+
+        // reading fish --> complete xx study tasks in a year
+        if (yearlyStats.categoryBreakdown?.Study >= 15 && !newBadges.includes("Book Fish")) {
+            newBadges.push("Book Fish");
+            newlyUnlocked.push("Book Fish");
+        }
+    
+        // whale tie --> complete xx work tasks in a month
+        if (monthlyStats.categoryBreakdown?.Work >= 3 && !newBadges.includes("Worker Whale")) {
+            newBadges.push("Worker Whale");
+            newlyUnlocked.push("Worker Whale");
+        }
+
+        // turtle
+        if (yearlyStats.categoryBreakdown?.Work >= 8 && !newBadges.includes("Business Turtle")) {
+            newBadges.push("Business Turtle");
+            newlyUnlocked.push("Business Turtle");
         }
 
         // Filter badges that haven't been alerted yet
@@ -139,12 +209,12 @@ const AchievementsScreen = () => {
         const badgeCount = earnedBadges.length;
 
         let newStatus;
-        if (badgeCount >= 15) {
-            newStatus = { name: "Neptune", image: starfish };
-        } else if (badgeCount >= 10) {
-            newStatus = { name: "Poseidon", image: conch };
-        } else if (badgeCount >= 5) {
-            newStatus = { name: "Percy", image: shell };
+        if (badgeCount >= 12) {
+            newStatus = { name: "Neptune", image: neptune };
+        } else if (badgeCount >= 8) {
+            newStatus = { name: "Poseidon", image: poseidon };
+        } else if (badgeCount >= 4) {
+            newStatus = { name: "Percy", image: percy };
         } else {
             newStatus = { name: "Newbie", image: cat };
         }
