@@ -6,6 +6,7 @@ import { CheckBox } from 'react-native-elements';
 import AddTask from '../menus/AddTask';
 import EditTask from '../menus/EditTask';
 import TimerScreen from './TimerScreen';
+import EditRecurrence from '../menus/EditRecurrence';
 import { BottomSheetModal, BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -50,6 +51,7 @@ const TasksScreen = ({ navigation }) => {
   const [newTask, setNewTask] = useState('');
   const bottomSheetRef = useRef(null);
   const editBottomSheetRef = useRef(null);
+  const recurrenceBottomSheetRef = useRef(null);
   const sheetRef = useRef(null);
   const [selectedTasks, setSelectedTasks] = useState({});
   const { minDate, maxDate } = getMinMaxDates();
@@ -753,6 +755,14 @@ const TasksScreen = ({ navigation }) => {
     editBottomSheetRef.current?.present();
   };
 
+  const closeRecurrenceBottomSheet = () => {
+    recurrenceBottomSheetRef.current?.dismiss();
+  };
+
+  const openRecurrenceBottomSheet = () => {
+    recurrenceBottomSheetRef.current?.present();
+  };
+
   const toggleTaskCompletion = async (taskId) => {
     const userId = auth.currentUser?.uid;
     if (!userId) return;
@@ -866,23 +876,35 @@ const TasksScreen = ({ navigation }) => {
             <Text style={Elements.mainButtonText}>Create New Task</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              Elements.secondaryButton,
-              styles.deleteButton,
-              !hasSelectedTasks && styles.disabledButton
-            ]}
-            onPress={hasSelectedTasks ? deleteSelectedTasks : null}
-          >
-            <Text
-              style={[
-                styles.deleteButtonText,
-                !hasSelectedTasks && styles.disabledButtonText
-              ]}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[Elements.secondaryButton, styles.deleteButton]}
+              onPress={openRecurrenceBottomSheet}
             >
-              Clear
-            </Text>
-          </TouchableOpacity>
+              <Text style={styles.deleteButtonText}>
+                Habits
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                Elements.secondaryButton,
+                styles.deleteButton,
+                !hasSelectedTasks && styles.disabledButton
+              ]}
+              onPress={hasSelectedTasks ? deleteSelectedTasks : null}
+            >
+              <Text
+                style={[
+                  styles.deleteButtonText,
+                  !hasSelectedTasks && styles.disabledButtonText
+                ]}
+              >
+                Clear
+              </Text>
+            </TouchableOpacity>
+          </View>
+
 
           <Text style={styles.todoTitle}>Tasks for {selectedDate}:</Text>
 
@@ -998,6 +1020,18 @@ const TasksScreen = ({ navigation }) => {
               tasks={tasks} // Pass the current tasks state
               closeBottomSheet={closeEditBottomSheet}
               saveUpdatedTask={saveUpdatedTask} // Define this to handle saving changes
+            />
+          </BottomSheetModal>
+
+          {/* Bottom Sheet for Editing Tasks */}
+          <BottomSheetModal
+            ref={recurrenceBottomSheetRef}
+            snapPoints={['75%']}
+            backgroundStyle={{ backgroundColor: Colors.background }}
+            onDismiss={closeEditBottomSheet}
+          >
+            <EditRecurrence
+              closeBottomSheet={closeRecurrenceBottomSheet}
             />
           </BottomSheetModal>
 
@@ -1126,6 +1160,12 @@ const styles = StyleSheet.create({
     color: '#3498db',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
   },
 });
 
