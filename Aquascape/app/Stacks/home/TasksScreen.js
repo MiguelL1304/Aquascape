@@ -5,12 +5,13 @@ import { ExpandableCalendar, CalendarProvider } from 'react-native-calendars';
 import { CheckBox } from 'react-native-elements';
 import AddTask from '../menus/AddTask';
 import EditTask from '../menus/EditTask';
+import TimerScreen from './TimerScreen';
 import { BottomSheetModal, BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useFocusEffect } from '@react-navigation/native';
 
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { auth, firestoreDB } from "../../../firebase/firebase";
-import { updateTaskCount, updateTimeLogged } from "../MyStatsScreen";
+import { updateTaskCount, updateTimeLogged } from "../stats/MyStatsScreen";
 
 
 //Styling and others
@@ -770,14 +771,24 @@ const TasksScreen = ({ navigation }) => {
       });
   
       // Update completed tasks count in Firestore
-      if (isCompleted) {
-        const userProfileRef = doc(firestoreDB, 'profile', userId);
-        const userProfileSnap = await getDoc(userProfileRef);
-  
-        const currentCompletedTasks = userProfileSnap.data()?.completedTasks || 0;
-        await updateDoc(userProfileRef, {
-          completedTasks: currentCompletedTasks + 1,
-        });
+      try {
+        if (isCompleted) {
+          await updateTimeLogged(userId, taskToUpdate, "add");
+          console.log("Task time added to stats.")
+          
+          const userProfileRef = doc(firestoreDB, 'profile', userId);
+          const userProfileSnap = await getDoc(userProfileRef);
+    
+          const currentCompletedTasks = userProfileSnap.data()?.completedTasks || 0;
+          await updateDoc(userProfileRef, {
+            completedTasks: currentCompletedTasks + 1,
+          });
+        } else {
+          await updateTimeLogged(userId, taskToUpdate, "remove");
+        }
+
+      } catch(error) {
+        console.log("Error updating time logged in Stats...or maybe somewhere else :|");
       }
     }
   };
@@ -810,6 +821,13 @@ const TasksScreen = ({ navigation }) => {
   const hasSelectedTasks = Object.keys(selectedTasks).some(
     (taskId) => selectedTasks[taskId]
   );
+
+  const navigateToTimer = (task) => {
+    navigation.navigate("TimerScreen", {
+      task,
+      fromTasks: true,
+    });
+  };
 
   return (
     <BottomSheetModalProvider>
@@ -889,11 +907,7 @@ const TasksScreen = ({ navigation }) => {
                       >
                         <TouchableOpacity            
                           style={[styles.taskItemContainer, { backgroundColor: categoryColors[task.category] }]}
-                          onPress={() => navigation.navigate('TimerScreen', { 
-                            taskTitle: task.title, 
-                            taskCategory: task.category,
-                            taskDuration: task.duration,
-                            fromTasks: true })}
+                          onPress={() => navigateToTimer(task)}
                         >
                           <CheckBox
                             checked={selectedTasks[task.id]}

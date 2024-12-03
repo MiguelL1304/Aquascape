@@ -12,7 +12,12 @@ import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { firestoreDB as db, auth } from '../../../firebase/firebase';
 
 const TimerScreen = ({ route }) => {
-  const { taskTitle, taskCategory, taskDuration, fromTasks } = route.params || {};
+  const { task, fromTasks } = route.params || {};
+  const taskTitle = task?.title || "No Title";
+  const taskCategory = task?.category || "No category";
+  const taskDuration = task?.duration || 0;
+
+  //console.log("Task received in TimerScreen:", task);
   const navigation = useNavigation();
 
   // STATE VARIABLES FOR TASKSCREEN
@@ -33,9 +38,9 @@ const TimerScreen = ({ route }) => {
   // FOR TESTING, DELETE LATER
   useEffect(() => {
     if (fromTasks) {
-      console.log(`Navigated from TasksScreen: Title=${taskTitle}, Category=${taskCategory}, Duration=${taskDuration}`);
+      console.log("Task received in TimerScreen: ", task);
     }
-  }, [fromTasks, taskTitle, taskCategory, taskDuration]);
+  }, [task]);
 
   useEffect(() => {
     let interval = null;
@@ -255,9 +260,20 @@ const handleTimerComplete = async (earnedShells) => {
 
       // Update achievements based on totalMinutes
       await updateAchievements(badgeTotalMinutes);
-  } catch (error) {
-      console.error("Error in handleTimerComplete:", error);
-  }
+
+      // Update stats using the useStats hook
+      if (task) {
+        await updateStats(task, fromTasks);
+      }
+
+      // Marks task as complete if fromTasks is true
+      if (fromTasks && task) {
+        await markTaskAsComplete(task);
+      }
+
+    } catch (error) {
+      console.error('Error in handleTimerComplete:', error);
+    }
 };
 
 
