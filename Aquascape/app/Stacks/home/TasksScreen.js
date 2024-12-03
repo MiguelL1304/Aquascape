@@ -559,19 +559,6 @@ const TasksScreen = ({ navigation }) => {
   
         return updatedTasks;
       });
-
-      // Update the local tasks state for the calendar view
-      // setTasks((prevTasks) => {
-      //   const updatedTasks = { ...prevTasks };
-  
-      //   recurringDates.forEach((date) => {
-      //     if (!updatedTasks[date]) updatedTasks[date] = [];
-      //     updatedTasks[date].push(newTask);
-      //   });
-  
-      //   return updatedTasks;
-      // });
-
   
       try {
         for (const [monthKey, weeks] of Object.entries(tasksByMonthAndWeek)) {
