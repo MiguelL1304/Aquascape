@@ -4,8 +4,8 @@ import { Picker } from '@react-native-picker/picker';
 import { Calendar } from 'react-native-calendars';
 
 // Styling
-import Colors from '../../constants/Colors';
-import Elements from '../../constants/Elements';
+import Colors from '../../../constants/Colors';
+import Elements from '../../../constants/Elements';
 
 const categories = ['Work', 'Personal', 'Fitness', 'Study', 'Leisure', 'Other'];
 const durationOptions = Array.from({ length: 24 }, (_, i) => (i + 1) * 5);
@@ -21,7 +21,7 @@ const daysOfWeek = [
   { label: 'None', value: 'None' },
 ];
 
-const AddTaskScreen = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
+const AddTask = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
   const [taskTitle, setTaskTitle] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [recurrence, setRecurrence] = useState([]);
@@ -393,4 +393,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AddTaskScreen;
+export default AddTask;
