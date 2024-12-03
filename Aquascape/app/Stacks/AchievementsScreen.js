@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Modal, Alert } from "react-native";
-import { doc, updateDoc, onSnapshot } from "firebase/firestore";
+import { doc, updateDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { firestoreDB, auth } from "../../firebase/firebase";
 
 import Colors from "../../constants/Colors";
@@ -12,6 +12,7 @@ import coral from "../../assets/coral.png";
 
 const AchievementsScreen = () => {
     const [earnedBadges, setEarnedBadges] = useState([]);
+    const [shownAlerts, setShownAlerts] = useState([]); // Track badges with alerts shown
     const [userData, setUserData] = useState({});
     const [selectedBadge, setSelectedBadge] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
@@ -34,12 +35,13 @@ const AchievementsScreen = () => {
         const userId = auth.currentUser?.uid;
         if (!userId) return;
 
-        // Real-time listeners for stats and badges
+        // Firestore references
         const monthlyStatsRef = doc(firestoreDB, "profile", userId, "stats", "monthly");
         const yearlyStatsRef = doc(firestoreDB, "profile", userId, "stats", "yearly");
         const badgeDocRef = doc(firestoreDB, "profile", userId, "badges", "badgeData");
         const userProfileRef = doc(firestoreDB, "profile", userId);
 
+        // Real-time listeners
         const unsubscribeMonthly = onSnapshot(monthlyStatsRef, (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
@@ -54,9 +56,17 @@ const AchievementsScreen = () => {
             }
         });
 
-        const unsubscribeBadges = onSnapshot(badgeDocRef, (docSnap) => {
+        const unsubscribeBadges = onSnapshot(badgeDocRef, async (docSnap) => {
             if (docSnap.exists()) {
-                setEarnedBadges(docSnap.data().earnedBadges || []);
+                const data = docSnap.data();
+                setEarnedBadges(data.earnedBadges || []);
+                setShownAlerts(data.shownAlerts || []); // Sync shown alerts with Firestore
+            } else {
+                console.log("Badge document not found. Initializing...");
+                await setDoc(badgeDocRef, {
+                    earnedBadges: [],
+                    shownAlerts: [],
+                });
             }
         });
 
@@ -74,7 +84,7 @@ const AchievementsScreen = () => {
         };
     }, []);
 
-    const checkAndAwardBadges = async (monthlyStats, yearlyStats) => {
+    const checkAndAwardBadges = async () => {
         const userId = auth.currentUser?.uid;
         if (!userId) return;
 
@@ -82,15 +92,12 @@ const AchievementsScreen = () => {
 
         const newBadges = [...earnedBadges];
         const newlyUnlocked = [];
+        const newShownAlerts = [...shownAlerts];
 
         // Badge conditions
         if (monthlyStats.totalTimeLogged >= 600 && !newBadges.includes("Starfish")) {
             newBadges.push("Starfish");
             newlyUnlocked.push("Starfish");
-        }
-        if (monthlyStats.totalTimeLogged >= 800 && !newBadges.includes("Conch")) {
-            newBadges.push("Conch");
-            newlyUnlocked.push("Conch");
         }
         if (yearlyStats.completedTasks >= 10 && !newBadges.includes("Coral")) {
             newBadges.push("Coral");
@@ -101,18 +108,32 @@ const AchievementsScreen = () => {
             newlyUnlocked.push("Fitness task");
         }
 
-        // Update Firestore if there are new badges
-        if (newlyUnlocked.length > 0) {
-            await updateDoc(badgeDocRef, { earnedBadges: newBadges });
+        // Filter badges that haven't been alerted yet
+        const badgesToAlert = newlyUnlocked.filter((badge) => !newShownAlerts.includes(badge));
 
-            // Show alert for each new badge
-            newlyUnlocked.forEach((badge) => {
-                Alert.alert("Congratulations!", `You've earned the "${badge}" badge!`);
+        // Show alerts for newly unlocked badges
+        badgesToAlert.forEach((badge) => {
+            Alert.alert("Congratulations!", `You've earned the "${badge}" badge!`);
+            newShownAlerts.push(badge); // Mark this badge's alert as shown
+        });
+
+        // Update Firestore with new badges and shown alerts
+        if (newlyUnlocked.length > 0) {
+            await updateDoc(badgeDocRef, {
+                earnedBadges: newBadges,
+                shownAlerts: newShownAlerts,
             });
 
             setEarnedBadges(newBadges); // Update local state
+            setShownAlerts(newShownAlerts); // Update local state
         }
     };
+
+    useEffect(() => {
+        if (Object.keys(monthlyStats).length > 0 && Object.keys(yearlyStats).length > 0) {
+            checkAndAwardBadges();
+        }
+    }, [monthlyStats, yearlyStats]); // Centralized trigger for badge checking
 
     const updateUserStatus = async () => {
         const badgeCount = earnedBadges.length;
@@ -122,7 +143,7 @@ const AchievementsScreen = () => {
             newStatus = { name: "Neptune", image: starfish };
         } else if (badgeCount >= 10) {
             newStatus = { name: "Poseidon", image: conch };
-        } else if (badgeCount >=5) {
+        } else if (badgeCount >= 5) {
             newStatus = { name: "Percy", image: shell };
         } else {
             newStatus = { name: "Newbie", image: cat };
@@ -141,12 +162,6 @@ const AchievementsScreen = () => {
         }
     }, [earnedBadges]);
 
-    useEffect(() => {
-        if (Object.keys(monthlyStats).length > 0 && Object.keys(yearlyStats).length > 0) {
-            checkAndAwardBadges(monthlyStats, yearlyStats);
-        }
-    }, [monthlyStats, yearlyStats]);
-
     const handleBadgePress = (badge) => {
         setSelectedBadge(badge);
         setModalVisible(true);
@@ -155,6 +170,7 @@ const AchievementsScreen = () => {
     const closeModal = () => {
         setModalVisible(false);
     };
+
 
     return (
         <View style={styles.container}>
@@ -224,6 +240,7 @@ const AchievementsScreen = () => {
         </View>
     );
 };
+
 
 
 
