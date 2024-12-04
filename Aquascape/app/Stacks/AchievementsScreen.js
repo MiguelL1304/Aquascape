@@ -41,6 +41,7 @@ const AchievementsScreen = () => {
         { title: "Book Fish", description: "Complete 15 study tasks in a year", image: require("../../assets/readFish.png") },
         { title: "Worker Whale", description: "Complete 3 work tasks in a month", image: require("../../assets/workingWhale.png") },
         { title: "Business Turtle", description: "Complete 8 work tasks in a year", image: require("../../assets/businessTurtle.png") },
+        { title: "test", description: "earn 1 shell", image: require("../../assets/cat.gif")}
     ];
 
     useEffect(() => {
@@ -107,6 +108,11 @@ const AchievementsScreen = () => {
         const newShownAlerts = [...shownAlerts];
 
         // Badge conditions
+        //test 
+        if (userData.seashells >= 1 && !newBadges.includes("test")) {
+            newBadges.push("test");
+            newlyUnlocked.push("test");
+        }
         // lotus --> earn xx shells
         if (userData.seashells >= 500 && !newBadges.includes("Lotus")) {
             newBadges.push("Lotus");
@@ -204,6 +210,9 @@ const AchievementsScreen = () => {
             checkAndAwardBadges();
         }
     }, [monthlyStats, yearlyStats]); // Centralized trigger for badge checking
+
+
+    
 
     const updateUserStatus = async () => {
         const badgeCount = earnedBadges.length;
