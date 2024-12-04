@@ -30,6 +30,9 @@ const SignupScreen = ({ navigation }) => {
       try {
         const uid = user.uid;
 
+        // Default profile picture 
+        const defaultProfilePic = require('../../assets/profilePics/defaultProfile.png');
+
         //Creates profile doc
         const userProfileRef = doc(firestoreDB, "profile", uid);
         await setDoc(userProfileRef, {
@@ -37,6 +40,7 @@ const SignupScreen = ({ navigation }) => {
           firstName: firstName, // Pass firstName from the captured value
           createdAt: new Date(),
           seashells: 0,
+          profilePic: defaultProfilePic,
         });
 
         //Creates aquarium data in the subcollection
