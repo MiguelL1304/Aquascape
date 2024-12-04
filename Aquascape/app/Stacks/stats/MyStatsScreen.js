@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { SvgChart, SVGRenderer } from '@wuba/react-native-echarts';
 import * as echarts from 'echarts/core';
 import { PieChart, BarChart } from 'echarts/charts';
 import { TooltipComponent, LegendComponent, GridComponent } from 'echarts/components';
 import useStats from './useStats';
+import { RefreshControl } from 'react-native-gesture-handler';
 
 echarts.use([
   TooltipComponent,
@@ -20,20 +22,33 @@ const MyStatsScreen = ({ navigation }) => {
   const [dailyChartData, setDailyChartData] = useState(null);
   const [weeklyStats, setWeeklyStats] = useState(null);
   const [weeklyChartData, setWeeklyChartData] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const dailyChartRef = useRef(null);
   const weeklyChartRef = useRef(null);
   const { width } = Dimensions.get('window');
 
   const categoryColors = {
-    Other: '#5470C6', // Indigo
-    Personal: '#91CC75', // Green
-    Leisure: '#FAC858', // Yellow
-    Study: '#EE6666', // Red
-    Work: '#73C0DE', // Blue
-    Fitness: '#FC8452', // Orange
-    // Add more categories as needed
+    Other: '#5470C6', 
+    Personal: '#91CC75', 
+    Leisure: '#FAC858', 
+    Study: '#EE6666', 
+    Work: '#73C0DE', 
+    Fitness: '#FC8452', 
   };
+
+    // Refresh stats whenever the screen is focused
+    useFocusEffect(
+      React.useCallback(() => {
+        const loadStats = async () => {
+          await fetchStats(); // Fetch daily stats
+          const weeklyData = await fetchWeeklyStats(); // Fetch weekly stats
+          setWeeklyStats(weeklyData);
+        };
+  
+        loadStats();
+      }, [])
+    );
 
   useEffect(() => {
     fetchStats();
@@ -95,53 +110,6 @@ const MyStatsScreen = ({ navigation }) => {
     loadWeeklyStats();
   }, []);
 
-  // useEffect(() => {
-  //   if (weeklyStats && weeklyStats.categoryBreakdown) {
-  //     const categories = Object.keys(weeklyStats.categoryBreakdown);
-  //     const values = Object.values(weeklyStats.categoryBreakdown);
-  
-  //     // console.log("Weekly chart categories:", categories); // should be ["Leisure"]
-  //     // console.log("Weekly chart values:", values); // should be [5]
-
-  //     const pieChartData = {
-  //       tooltip: {
-  //         trigger: "item",
-  //       },
-  //       legend: {
-  //         top: "bottom",
-  //         left: "center",
-  //       },
-  //       series: [
-  //         {
-  //           name: "Weekly Time Logged",
-  //           type: "pie",
-  //           radius: ["40%", "70%"],
-  //           data: categories.map((category, index) => ({
-  //             value: values[index],
-  //             name: category,
-  //           })),
-  //         },
-  //       ],
-  //     };
-
-  //     console.log("Generated weeklyChartData:", pieChartData);
-  //     setWeeklyChartData(pieChartData);
-  //   }
-  // }, [weeklyStats]);
-
-  // useEffect(() => {
-  //   if (weeklyChartRef.current && weeklyChartData) {
-  //     const chart = echarts.init(weeklyChartRef.current, null, {
-  //       renderer: 'svg',
-  //       width: width - 92, // Adjust for padding
-  //       height: 300,
-  //     });
-  
-  //     chart.setOption(weeklyChartData); // Apply chart options
-  //     console.log("Weekly chart initialized with data:", weeklyChartData); // Debug log
-  //     return () => chart.dispose();
-  //   }
-  // }, [weeklyChartData]);
 
   useEffect(() => {
     if (weeklyStats && weeklyStats.categoryBreakdown) {
@@ -168,7 +136,7 @@ const MyStatsScreen = ({ navigation }) => {
           data: categories,
           axisLabel: {
             interval: 0,
-            rotate: 30, // Rotate labels if necessary
+            rotate: 30,
           },
         },
         yAxis: {
@@ -210,13 +178,22 @@ const MyStatsScreen = ({ navigation }) => {
       return () => chart.dispose();
     }
   }, [weeklyChartData]);
-  
-  
-  
-  
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchStats();
+    const weeklyData = await fetchWeeklyStats();
+    setWeeklyStats(weeklyData);
+    setIsRefreshing(false);
+  };
 
   return (
-    <ScrollView style={styles.mainContainer}>
+    <ScrollView 
+      style={styles.mainContainer}
+      refreshControl={
+        <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+      }
+    >
       <Text style={styles.statsTitle}>My Stats</Text>
       <Text style={styles.sectionTitle}>Daily Stats</Text>
       {dailyChartData ? (

@@ -1,4 +1,3 @@
-// Path: ../../../hooks/useStats.js
 
 import { useState } from "react";
 import {
@@ -359,7 +358,6 @@ const useStats = () => {
     updateStats,
     markTaskAsComplete,
     fetchDailyStats,
-    //updateTaskCount,
     fetchWeeklyStats,
     getWeekRange,
   };
