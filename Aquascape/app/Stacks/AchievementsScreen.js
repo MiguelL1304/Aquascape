@@ -108,66 +108,110 @@ const AchievementsScreen = () => {
             unsubscribeUserProfile();
         };
     }, []);
-    
-    
 
     const checkAndAwardBadges = async () => {
         const userId = auth.currentUser?.uid;
-        if (!userId || shownAlerts.length === 0) return; // Wait for state to sync
-    
+        if (!userId) return;
+
         const badgeDocRef = doc(firestoreDB, "profile", userId, "badges", "badgeData");
-    
+
         const newBadges = [...earnedBadges];
         const newlyUnlocked = [];
-    
+        const newShownAlerts = [...shownAlerts];
+
         // Badge conditions
+
+        // lotus
         if (yearlyStats.categoryBreakdown?.Leisure >= 5 && !newBadges.includes("Lotus")) {
             newBadges.push("Lotus");
             newlyUnlocked.push("Lotus");
         }
+
+        // conch --> complete 5 personal tasks in a year
         if (yearlyStats.categoryBreakdown?.Personal >= 5 && !newBadges.includes("Conch")) {
             newBadges.push("Conch");
             newlyUnlocked.push("Conch");
         }
+
+        // starfish --> complete xx total tasks in a month
         if (monthlyStats.completedTasks >= 5 && !newBadges.includes("Starfish")) {
             newBadges.push("Starfish");
             newlyUnlocked.push("Starfish");
         }
+
+        // coral --> complete xx total minutes in a month
         if (monthlyStats.totalTimeLogged >= 300 && !newBadges.includes("Coral")) {
             newBadges.push("Coral");
             newlyUnlocked.push("Coral");
         }
+        // wave --> complete xx total tasks in a year
         if (yearlyStats.completedTasks >= 25 && !newBadges.includes("Wave")) {
             newBadges.push("Wave");
             newlyUnlocked.push("Wave");
         }
+
+        // pretty fish --> complete xx total minutes in a year
         if (yearlyStats.totalTimeLogged >= 1440 && !newBadges.includes("Majesty")) {
             newBadges.push("Majesty");
             newlyUnlocked.push("Majesty");
         }
-    
-        // Filter badges to alert
-        const badgesToAlert = newlyUnlocked.filter((badge) => !shownAlerts.includes(badge));
-    
-        // Show alerts for new badges
-        for (const badge of badgesToAlert) {
-            Alert.alert("Congratulations!", `You've earned the "${badge}" badge!`);
+
+        // fit crab --> complete xx fitness tasks in a month
+        if (monthlyStats.categoryBreakdown?.Fitness >= 3 && !newBadges.includes("Power Crab")) {
+            newBadges.push("Power Crab");
+            newlyUnlocked.push("Power Crab");
+        }
+
+        // fit shark --> complete xx fitness tasks in a year
+        if (yearlyStats.categoryBreakdown?.Fitness >= 10 && !newBadges.includes("Gym Shark")) {
+            newBadges.push("Gym Shark");
+            newlyUnlocked.push("Gym Shark");
+        }
+        
+        // study fish --> complete xx study tasks in a month
+        if (monthlyStats.categoryBreakdown?.Study >= 5 && !newBadges.includes("Nerd Fish")) {
+            newBadges.push("Nerd Fish");
+            newlyUnlocked.push("Nerd Fish");
+        }
+
+        // reading fish --> complete xx study tasks in a year
+        if (yearlyStats.categoryBreakdown?.Study >= 15 && !newBadges.includes("Book Fish")) {
+            newBadges.push("Book Fish");
+            newlyUnlocked.push("Book Fish");
         }
     
-        // Update Firestore and local state
+        // whale tie --> complete xx work tasks in a month
+        if (monthlyStats.categoryBreakdown?.Work >= 3 && !newBadges.includes("Worker Whale")) {
+            newBadges.push("Worker Whale");
+            newlyUnlocked.push("Worker Whale");
+        }
+
+        // turtle
+        if (yearlyStats.categoryBreakdown?.Work >= 8 && !newBadges.includes("Business Turtle")) {
+            newBadges.push("Business Turtle");
+            newlyUnlocked.push("Business Turtle");
+        }
+
+        // Filter badges that haven't been alerted yet
+        const badgesToAlert = newlyUnlocked.filter((badge) => !newShownAlerts.includes(badge));
+
+        // Show alerts for newly unlocked badges
+        badgesToAlert.forEach((badge) => {
+            Alert.alert("Congratulations!", `You've earned the "${badge}" badge!`);
+            newShownAlerts.push(badge); // Mark this badge's alert as shown
+        });
+
+        // Update Firestore with new badges and shown alerts
         if (newlyUnlocked.length > 0) {
             await updateDoc(badgeDocRef, {
                 earnedBadges: newBadges,
-                shownAlerts: [...shownAlerts, ...badgesToAlert],
+                shownAlerts: newShownAlerts,
             });
-    
-            setEarnedBadges(newBadges);
-            setShownAlerts([...shownAlerts, ...badgesToAlert]);
+
+            setEarnedBadges(newBadges); // Update local state
+            setShownAlerts(newShownAlerts); // Update local state
         }
     };
-    
-    
-    
 
     useEffect(() => {
         if (
@@ -177,8 +221,7 @@ const AchievementsScreen = () => {
         ) {
             checkAndAwardBadges();
         }
-    }, [monthlyStats, yearlyStats, shownAlerts]); // Depend on `shownAlerts` to avoid premature execution
-    
+    }, [monthlyStats, yearlyStats, shownAlerts]); 
 
 
     
@@ -300,26 +343,9 @@ const styles = StyleSheet.create({
     shellContainer: { flexDirection: "row", alignItems: "center", marginTop: 10 },
     shellImage: { width: 30, height: 30, marginRight: 5 },
     shellCount: { fontSize: 16, fontWeight: "bold", color: Colors.white },
-    statusContainer: { alignItems: "center", marginVertical: 20,
-        
-     },
-    statusImage: { 
-        width: 140, 
-        height: 140, 
-        borderRadius: 70,
-        borderWidth: 4,
-        borderColor: Colors.white,
-        
-    },
-    statusText: { 
-        fontSize: 25,
-        fontWeight: "bold",
-        color: Colors.theme.brown,
-        marginTop: 10,
-        textShadowColor: "rgba(0, 0, 0, 0.5)", // Shadow color
-        textShadowOffset: { width: 2, height: 2 }, // Shadow offset (horizontal and vertical)
-        textShadowRadius: 3,
-     },
+    statusContainer: { alignItems: "center", marginVertical: 20 },
+    statusImage: { width: 120, height: 120, borderRadius: 60 },
+    statusText: { fontSize: 20, fontWeight: "bold", color: Colors.primary, marginTop: 10 },
     headerText: {
         fontSize: 24,
         fontWeight: "bold",
