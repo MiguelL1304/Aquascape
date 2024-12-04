@@ -32,3 +32,21 @@ Make sure you have the following installed:
    ```
    git clone git@github.com:MiguelL1304/Aquascape.git
    ```
+2. **Install dependencies:***
+   ```
+   npm install
+   ```
+3. **Set up a Firebase Project and add credentials to** `firebase.js`.
+4. **Start the development server by running**
+   ```
+   npm start
+   ```
+   
+   **OR**
+   
+   ```
+   npx expo start
+   ```
+
+## Of Note:
+This project uses Expo version `51.0.36` and will **not** run on the updated `52.0.14` version of Expo.
