@@ -39,19 +39,39 @@ const AquariumScreen = ({ navigation }) => {
     "Happyfish.gif": require("../../../assets/fish/Happyfish.gif"),
   };
 
+  const backgroundImageMap = {
+    "desert-bg.png": require("../../../assets/backgrounds/desert-bg.png"),
+    "futuristic-city-bg.png": require("../../../assets/backgrounds/futuristic-city-bg.png"),
+    "jungle-bg.png": require("../../../assets/backgrounds/jungle-bg.png"),
+    "space-bg.png": require("../../../assets/backgrounds/space-bg.png"),
+  };
+  
+
+
+  const [currentBackground, setCurrentBackground] = useState(null);
+  const background = currentBackground
+  ? useImage(backgroundImageMap[currentBackground])
+  : useImage(require("../../../assets/backgroundSample.png"));
+
+
   // Load the background image using Skia
-  const background = useImage(require("../../../assets/backgroundSample.png"));
+  // const background = useImage(require("../../../assets/backgroundSample.png"));
 
   const fetchAquariumData = async () => {
     const user = auth.currentUser;
     if (user) {
       const uid = user.uid;
       const aquariumRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
-
+  
       try {
         const aquariumSnap = await getDoc(aquariumRef);
+  
         if (aquariumSnap.exists()) {
-          const fishData = aquariumSnap.data().fish;
+          const data = aquariumSnap.data(); // Safely access .data()
+          console.log("Fetched Aquarium Data:", data);
+  
+          // Update fish array
+          const fishData = data.fish || [];
           const updatedFishArray = fishData.map((fish, index) => ({
             id: index,
             fileName: fish.fileName,
@@ -59,14 +79,24 @@ const AquariumScreen = ({ navigation }) => {
             positionY: Math.random() * (MAX_Y_POSITION - MIN_Y_POSITION) + MIN_Y_POSITION,
           }));
           setFishArray(updatedFishArray);
+  
+          // Update current background
+          if (data.currentBackground) {
+            setCurrentBackground(data.currentBackground);
+          } else {
+            console.log("No currentBackground found in Firestore.");
+          }
         } else {
-          console.log("No aquarium data found");
+          console.log("No aquarium document found in Firestore.");
         }
       } catch (error) {
         console.error("Error fetching aquarium data: ", error);
       }
     }
   };
+  
+
+  
 
   useFocusEffect(
     useCallback(() => {
@@ -134,12 +164,13 @@ const AquariumScreen = ({ navigation }) => {
 
         {/* Bottom Sheet for Storage */}
         <BottomSheetModal
-          ref={bottomSheetRef}
-          snapPoints={["80%"]}
-          backgroundStyle={{ backgroundColor: Colors.lightBlue }}
-        >
-          <StorageMenu refreshAquarium={fetchAquariumData} />
-        </BottomSheetModal>
+  ref={bottomSheetRef}
+  snapPoints={["80%"]}
+  backgroundStyle={{ backgroundColor: Colors.lightBlue }}
+>
+  <StorageMenu refreshAquarium={fetchAquariumData} />
+</BottomSheetModal>
+
       </View>
       
     </BottomSheetModalProvider>
