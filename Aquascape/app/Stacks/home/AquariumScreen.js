@@ -68,7 +68,7 @@ const AquariumScreen = ({ navigation }) => {
   
         if (aquariumSnap.exists()) {
           const data = aquariumSnap.data(); // Safely access .data()
-          console.log("Fetched Aquarium Data:", data);
+          // console.log("Fetched Aquarium Data:", data);
   
           // Update fish array
           const fishData = data.fish || [];
