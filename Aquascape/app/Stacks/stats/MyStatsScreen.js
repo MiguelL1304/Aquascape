@@ -25,6 +25,16 @@ const MyStatsScreen = ({ navigation }) => {
   const weeklyChartRef = useRef(null);
   const { width } = Dimensions.get('window');
 
+  const categoryColors = {
+    Other: '#5470C6', // Indigo
+    Personal: '#91CC75', // Green
+    Leisure: '#FAC858', // Yellow
+    Study: '#EE6666', // Red
+    Work: '#73C0DE', // Blue
+    Fitness: '#FC8452', // Orange
+    // Add more categories as needed
+  };
+
   useEffect(() => {
     fetchStats();
   }, []);
@@ -50,6 +60,9 @@ const MyStatsScreen = ({ navigation }) => {
             data: categories.map((category, index) => ({
               value: values[index],
               name: category,
+              itemStyle: {
+                color: categoryColors[category],
+              }
             })),
           },
         ],
@@ -135,43 +148,6 @@ const MyStatsScreen = ({ navigation }) => {
       //const days = Object.keys(weeklyStats.categoryBreakdown);
       const categories = Object.keys(weeklyStats.categoryBreakdown);
       const values = Object.values(weeklyStats.categoryBreakdown);
-      
-      // Prepare the series data for stacked bars
-      // const series = categories.map((category) => ({
-      //   name: category,
-      //   type: "bar",
-      //   stack: "total", // Stack all series with the same stack name
-      //   data: days.map((day) => weeklyStats.dailyCategoryBreakdown[day][category] || 0),
-      // }));
-  
-      // const barChartData = {
-      //   tooltip: {
-      //     trigger: "axis",
-      //     axisPointer: {
-      //       type: "shadow",
-      //     },
-      //   },
-      //   legend: {
-      //     top: "bottom",
-      //     left: "center",
-      //     data: categories,
-      //   },
-      //   grid: {
-      //     left: "3%",
-      //     right: "4%",
-      //     bottom: "3%",
-      //     containLabel: true,
-      //   },
-      //   xAxis: {
-      //     type: "category",
-      //     data: days,
-      //   },
-      //   yAxis: {
-      //     type: "value",
-      //     name: "Time Logged (minutes)",
-      //   },
-      //   series,
-      // };
 
       const barChartData = {
         tooltip: {
@@ -179,6 +155,13 @@ const MyStatsScreen = ({ navigation }) => {
           axisPointer: {
             type: 'shadow',
           },
+        },
+        grid: {
+          top: 20,
+          left: 50,
+          right: 20,
+          bottom: 50,
+          containLabel: true,
         },
         xAxis: {
           type: 'category',
@@ -191,14 +174,22 @@ const MyStatsScreen = ({ navigation }) => {
         yAxis: {
           type: 'value',
           name: 'Time Logged (minutes)',
+          nameGap: 40,
+          nameLocation: 'middle',
+          nameTextStyle: {
+            fontSize: 12,
+          }
         },
         series: [
           {
-            data: values,
+            data: categories.map((category, index) => ({
+              value: values[index],
+              itemStyle: {
+              color: categoryColors[category],
+              },
+            })),
             type: 'bar',
-            itemStyle: {
-              color: '#5470C6', // Customize bar color
-            },
+            
           },
         ],
       };
@@ -269,6 +260,7 @@ const styles = StyleSheet.create({
     height: 300,
     width: '100%',
     backgroundColor: 'transparent',
+    marginBottom: 20,
   },
   noDataText: {
     fontSize: 16,
