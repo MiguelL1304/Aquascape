@@ -40,6 +40,7 @@ const AquariumScreen = ({ navigation }) => {
   };
 
   const backgroundImageMap = {
+    "backgroundSample.png": require("../../../assets/backgroundSample.png"),
     "desert-bg.png": require("../../../assets/backgrounds/desert-bg.png"),
     "futuristic-city-bg.png": require("../../../assets/backgrounds/futuristic-city-bg.png"),
     "jungle-bg.png": require("../../../assets/backgrounds/jungle-bg.png"),
