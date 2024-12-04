@@ -8,7 +8,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { auth, firestoreDB } from '../../../firebase/firebase';
 import Colors from '../../../constants/Colors';
 import Elements from '../../../constants/Elements';
@@ -107,6 +107,15 @@ const EditTaskRecurrence = ({ recurrence, closeBottomSheet, initializeScreen }) 
       if (recurrenceSnap.exists()) {
         const data = recurrenceSnap.data();
 
+        const originalRecurrence = data.tasks.find(
+            (task) => task.recurrenceID === taskDetails.recurrenceID
+        );
+
+        if (!originalRecurrence) {
+            console.error("Original recurrence entry not found.");
+            return;
+        }
+
         // Sanitize taskDetails to include only necessary fields
         const sanitizedTaskDetails = {
             category: taskDetails.category,
@@ -116,15 +125,31 @@ const EditTaskRecurrence = ({ recurrence, closeBottomSheet, initializeScreen }) 
             title: taskDetails.title,
         };
 
+        //Check if recurrence changed
+        const recurrenceDaysChanged = JSON.stringify(originalRecurrence.recurrence) !== JSON.stringify(sanitizedTaskDetails.recurrence);
+
+        if (recurrenceDaysChanged) {
+            console.log("Recurrence days have changed. Deleting and recreating tasks.");
+    
+            // Delete all existing tasks with this recurrenceID
+            await deleteAllRecurringTasks(taskDetails.recurrenceID);
+    
+            // Add new tasks with the updated recurrence details
+            await createNewRecurringTasks(sanitizedTaskDetails);
+        } else {
+            console.log("Recurrence days unchanged. Proceeding with standard update.");
+    
+            // Update all recurring tasks for the current and next month
+            await updateAllRecurringTasks(taskDetails.recurrenceID, sanitizedTaskDetails);
+        }
+
+        // Update recurrence details in the recurrence document
         const updatedTasks = data.tasks.map((task) =>
             task.recurrenceID === sanitizedTaskDetails.recurrenceID ? sanitizedTaskDetails : task
         );
-
         await updateDoc(recurrenceDocRef, { tasks: updatedTasks });
-        console.log("Recurrence updated successfully.");
 
-        // Update all recurring tasks for the current and next month
-        await updateAllRecurringTasks(taskDetails.recurrenceID, sanitizedTaskDetails);
+        console.log("Recurrence updated successfully.");
 
         closeBottomSheet();
         await initializeScreen();
@@ -133,6 +158,97 @@ const EditTaskRecurrence = ({ recurrence, closeBottomSheet, initializeScreen }) 
       console.error('Error updating recurrence:', error);
     }
   };
+
+    const createNewRecurringTasks = async (taskDetails) => {
+        const user = auth.currentUser;
+        if (!user) {
+            console.error("User not authenticated.");
+            return;
+        }
+
+        try {
+            const uid = user.uid;
+            const [currentMonthKey, nextMonthKey] = getMonthKeys();
+
+            const generateRecurringDates = (recurrenceDays, startDate, endDate) => {
+            const recurringDates = [];
+            for (
+                let currentDate = new Date(startDate);
+                currentDate <= endDate;
+                currentDate.setDate(currentDate.getDate() + 1)
+            ) {
+                const currentDay = currentDate.toLocaleDateString("en-US", {
+                weekday: "long",
+                });
+                if (recurrenceDays.includes(currentDay)) {
+                recurringDates.push(
+                    new Date(currentDate).toISOString().split("T")[0]
+                );
+                }
+            }
+            return recurringDates;
+            };
+
+            for (const monthKey of [currentMonthKey, nextMonthKey]) {
+            const daysInMonth = new Date(
+                parseInt(monthKey.split("-")[0], 10),
+                parseInt(monthKey.split("-")[1], 10),
+                0
+            ).getDate();
+
+            const startDate = new Date(
+                parseInt(monthKey.split("-")[0], 10),
+                parseInt(monthKey.split("-")[1], 10) - 1,
+                1
+            );
+            const endDate = new Date(
+                parseInt(monthKey.split("-")[0], 10),
+                parseInt(monthKey.split("-")[1], 10) - 1,
+                daysInMonth
+            );
+
+            const recurringDates = generateRecurringDates(
+                taskDetails.recurrence,
+                startDate,
+                endDate
+            );
+
+            const tasksByWeek = recurringDates.reduce((acc, date) => {
+                const day = parseInt(date.split("-")[2], 10);
+                const weekTag =
+                day <= 7
+                    ? "1-7"
+                    : day <= 14
+                    ? "8-14"
+                    : day <= 21
+                    ? "15-21"
+                    : day <= 28
+                    ? "22-28"
+                    : "29-end";
+
+                if (!acc[weekTag]) acc[weekTag] = [];
+                acc[weekTag].push({
+                ...taskDetails,
+                date,
+                id: `${new Date().getTime()}${date.replace(/-/g, "")}`,
+                });
+                return acc;
+            }, {});
+
+            const tasksDocRef = doc(firestoreDB, "profile", uid, "tasks", monthKey);
+            for (const [weekTag, tasks] of Object.entries(tasksByWeek)) {
+                await updateDoc(tasksDocRef, {
+                [weekTag]: arrayUnion(...tasks),
+                });
+            }
+            }
+
+            console.log("New recurring tasks created successfully.");
+        } catch (error) {
+            console.error("Error creating new recurring tasks:", error);
+        }
+    };
+  
 
   // Delete the recurrence entry
   const handleDelete = async () => {
