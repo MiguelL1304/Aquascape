@@ -1,6 +1,6 @@
 # Aquascape 🌊🐠
 
-Aquascape App is a focus timer and task tracking app with an aquarium theme. 
+Aquascape is a focus timer and task tracking app with an aquarium theme. 
 Earn shells by completing tasks and use them to buy fish and customize your aquarium! 
 
 ## Features ✨
@@ -28,5 +28,7 @@ Make sure you have the following installed:
   - Android emulator available through Android Studio.
  
 ### Installation
-1. **Clone the repository**
-   ```git clone git@github.com:MiguelL1304/Aquascape.git```
+1. **Clone the repository**:
+   ```
+   git clone git@github.com:MiguelL1304/Aquascape.git
+   ```
