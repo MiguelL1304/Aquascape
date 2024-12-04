@@ -13,7 +13,7 @@ const StoreScreen = ({ navigation }) => {
     { id: '5', name: 'test', image: require("../../assets/cat.gif"), price: '100', unlocked: true,requirement: { type: 'productivity', hours: 10 } },
     { id: '6', name: 'tester fishy', image: require("../../assets/cat.gif"), price: '100', unlocked: true, requirement: { type: 'productivity', hours: 24 } },
     { id: "7", name: "Blue Tang", image: require("../../assets/fish/Bluetang.gif"), price: 100, fileName: "Bluetang.gif", rarity: "common", unlocked: false, requiredBadge: 'Book Fish' },
-    { id: "8", name: "Cat Fish", image: require("../../assets/fish/Catfish.gif"), price: 100, fileName: "Catfish.gif", rarity: "rare", unlocked: false, requiredBadge: 'Majesty' },
+    { id: "8", name: "Cat Fish", image: require("../../assets/fish/Catfish.gif"), price: 100, fileName: "Catfish.gif", rarity: "rare", unlocked: false, requireAllBadges: true },
     { id: "9", name: "Goldfish", image: require("../../assets/fish/Goldfish.gif"), price: 100, fileName: "Goldfish.gif", rarity: "common", unlocked: false,requiredBadge: 'Wave' },
     { id: "10", name: "Clownfish", image: require("../../assets/fish/Clownfish.gif"), price: 100, fileName: "Clownfish.gif", rarity: "common", unlocked: false, requiredBadge: 'Gym Shark' },
 
@@ -28,8 +28,9 @@ const StoreScreen = ({ navigation }) => {
 
   const [selectedCategory, setSelectedCategory] = useState("Fish");
   const filteredItems = selectedCategory === "Fish" ? items : backgroundItems;
-
-  
+  const allPossibleBadges = ['Lotus', 'Conch', 'Starfish', 'Coral', 'Wave', 'Majesty', 'Power Crab', 'Gym Shark',
+    'Nerd Fish', 'Book Fish', 'Worker Whale', 'Business Turtle',
+  ];
 
   const [seashells, setSeashells] = useState(0);
   const [userFish, setUserFish] = useState([]);
@@ -38,30 +39,30 @@ const StoreScreen = ({ navigation }) => {
   const [userFishCounts, setUserFishCounts] = useState({});
   const [earnedBadges, setEarnedBadges] = useState([]);
 
-  const [userProgress, setUserProgress] = useState({});
+  // const [userProgress, setUserProgress] = useState({});
 
-  useEffect(() => {
-    const fetchUserProgress = async () => {
-      const userId = auth.currentUser?.uid;
-      if (!userId) {
-        console.error('User is not authenticated');
-        return;
-      }
+  // useEffect(() => {
+  //   const fetchUserProgress = async () => {
+  //     const userId = auth.currentUser?.uid;
+  //     if (!userId) {
+  //       console.error('User is not authenticated');
+  //       return;
+  //     }
 
-      const progressDocRef = doc(firestoreDB, 'profile', userId, 'badges', 'badgeData');
-      const progressDoc = await getDoc(progressDocRef);
+  //     const progressDocRef = doc(firestoreDB, 'profile', userId, 'badges', 'badgeData');
+  //     const progressDoc = await getDoc(progressDocRef);
 
-      if (progressDoc.exists()) {
-        const data = progressDoc.data();
-        setEarnedBadges(data.earnedBadges || []); // Update earnedBadges from Firestore
-        console.log('Fetched user progress:', data);
-      } else {
-        console.log('No progress data found in Firestore.');
-      }
-    };
+  //     if (progressDoc.exists()) {
+  //       const data = progressDoc.data();
+  //       setEarnedBadges(data.earnedBadges || []); // Update earnedBadges from Firestore
+  //       console.log('Fetched user progress:', data);
+  //     } else {
+  //       console.log('No progress data found in Firestore.');
+  //     }
+  //   };
 
-    fetchUserProgress();
-  }, []);
+  //   fetchUserProgress();
+  // }, []);
 
 useEffect(() => {
   const fetchBadges = async () => {
@@ -112,6 +113,12 @@ useEffect(() => {
 
 useEffect(() => {
   const updatedItems = items.map(item => {
+    // unlock all badges to unlock catfish
+    if (item.requireAllBadges) {
+      const hasAllBadges = allPossibleBadges.every(badge => earnedBadges.includes(badge));
+      return { ...item, unlocked: hasAllBadges };
+    }
+    // unlock specific badges to unlock special fish
     if (item.requiredBadge && earnedBadges.includes(item.requiredBadge)) {
       return { ...item, unlocked: true };
     }
@@ -162,15 +169,18 @@ useEffect(() => {
 
   const handlePress = (item) => {
     if (!item.unlocked) {
-      const requirementMessage = item.requiredBadge
+      const requirementMessage = item.requireAllBadges
+        ? "You need to earn all badges to unlock this item."
+        : item.requiredBadge
         ? `You need the ${item.requiredBadge} badge to unlock this item.`
         : 'This item is locked.';
       Alert.alert('Locked Item', requirementMessage);
       return;
     }
     setSelectedItem(item);
-    setIsModalVisible(true); // Open modal on item press
+    setIsModalVisible(true);
   };
+  
   
 
   const closeModal = () => {
