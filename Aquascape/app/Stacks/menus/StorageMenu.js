@@ -18,14 +18,15 @@ const imageMap = {
 };
 
 const backgroundImageMap = {
+  "backgroundSample.png": require("../../../assets/backgroundSample.png"),
   "desert-bg.png": require("../../../assets/backgrounds/desert-bg.png"),
   "futuristic-city-bg.png": require("../../../assets/backgrounds/futuristic-city-bg.png"),
   "jungle-bg.png": require("../../../assets/backgrounds/jungle-bg.png"),
   "space-bg.png": require("../../../assets/backgrounds/space-bg.png"),
 };
 
-
 const initialBackgrounds = [
+  { fileName: "backgroundSample.png", name: "Default" },
   { fileName: "desert-bg.png", name: "Desert" },
   { fileName: "futuristic-city-bg.png", name: "Futuristic City" },
   { fileName: "jungle-bg.png", name: "Jungle" },
@@ -37,10 +38,18 @@ const StorageMenu = ({ refreshAquarium }) => {
   const [aquariumFish, setAquariumFish] = useState([]);
 
   const [storageBackgrounds, setStorageBackgrounds] = useState([]);
+  const [currentBackground, setCurrentBackground] = useState(null);
+
+
+  const [selectedCategory, setSelectedCategory] = useState("Storage");
 
 
   const [selectedFish, setSelectedFish] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const [selectedBackground, setSelectedBackground] = useState(null);
+  const [isBackgroundModalVisible, setIsBackgroundModalVisible] = useState(false);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,6 +64,8 @@ const StorageMenu = ({ refreshAquarium }) => {
             setStorageFish(data.storageFish || []);
             setAquariumFish(data.fish || []);
             setStorageBackgrounds(data.storageBackgrounds || []); // Only fetch purchased backgrounds
+            setCurrentBackground(data.currentBackground || null); // Fetch current background
+
           } else {
             console.log("Aquarium document does not exist!");
           }
@@ -68,76 +79,29 @@ const StorageMenu = ({ refreshAquarium }) => {
   }, []);
   
 
-  // useEffect(() => {
-  //   const initializeAndFetchData = async () => {
-  //     const user = auth.currentUser;
-  //     if (user) {
-  //       const uid = user.uid;
-  //       const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
-  //       try {
-  //         const aquariumSnap = await getDoc(aquariumDocRef);
-  //         if (!aquariumSnap.exists()) {
-  //           await setDoc(aquariumDocRef, { storageBackgrounds: initialBackgrounds, storageFish: [], fish: [] });
-  //           setStorageBackgrounds(initialBackgrounds);
-  //         } else {
-  //           const data = aquariumSnap.data();
-  //           setStorageFish(data.storageFish || []);
-  //           setAquariumFish(data.fish || []);
-  //           // Initialize backgrounds if they don't exist
-  //           if (!data.storageBackgrounds || data.storageBackgrounds.length === 0) {
-  //             await updateDoc(aquariumDocRef, { storageBackgrounds: initialBackgrounds });
-  //             setStorageBackgrounds(initialBackgrounds);
-  //           } else {
-  //             setStorageBackgrounds(data.storageBackgrounds);
-  //           }
-  //         }
-  //       } catch (error) {
-  //         console.error("Error initializing or fetching data:", error);
-  //       }
-  //     }
-  //   };
-  
-  //   initializeAndFetchData();
-  // }, []);
-  
-
   const handlePress = (fish, isFromStorage) => {
     setSelectedFish({ ...fish, isFromStorage });
     setIsModalVisible(true);
   };
 
   const handleBackgroundSelect = (background) => {
-    Alert.alert(
-      "Background Selected",
-      `You selected the ${background.name} background. Would you like to apply it?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Apply",
-          onPress: async () => {
-            const user = auth.currentUser;
-            if (user) {
-              const uid = user.uid;
-              const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
-              try {
-                await updateDoc(aquariumDocRef, { currentBackground: background.fileName });
-                Alert.alert("Success", `${background.name} has been applied.`);
-              } catch (error) {
-                console.error("Error applying background:", error);
-                Alert.alert("Error", "Failed to apply the background. Please try again.");
-              }
-            }
-          },
-        },
-      ]
-    );
+    setSelectedBackground(background); // Set the selected background
+    setIsBackgroundModalVisible(true); // Show the modal
   };
+  
+
   
 
   const closeModal = () => {
     setIsModalVisible(false);
     setSelectedFish(null);
   };
+
+  const closeBackgroundModal = () => {
+    setIsBackgroundModalVisible(false);
+    setSelectedBackground(null);
+  };
+  
 
   const handleAddToAquarium = async () => {
     const user = auth.currentUser;
@@ -197,7 +161,7 @@ const StorageMenu = ({ refreshAquarium }) => {
     }
   };
 
-  const handleMoveToStorage = async () => {
+  const handleMoveToStorage = async (moveAll = false) => {
     const user = auth.currentUser;
     if (user && selectedFish) {
       const uid = user.uid;
@@ -208,16 +172,25 @@ const StorageMenu = ({ refreshAquarium }) => {
         if (aquariumSnap.exists()) {
           const data = aquariumSnap.data();
   
-          // Remove the fish from the aquarium
-          const updatedFishArray = data.fish.filter(
-            (fish) =>
-              !(
-                fish.name === selectedFish.name &&
-                fish.fileName === selectedFish.fileName
-              )
+          // Filter out the selected fish from the aquarium
+          let updatedFishArray = data.fish.filter(
+            (fish) => fish.name !== selectedFish.name || fish.fileName !== selectedFish.fileName
           );
   
-          // Add the fish to the storage array
+          if (!moveAll) {
+            // If not moving all, add one instance back to aquarium
+            const selectedIndex = data.fish.findIndex(
+              (fish) => fish.name === selectedFish.name && fish.fileName === selectedFish.fileName
+            );
+            if (selectedIndex !== -1) {
+              updatedFishArray = [
+                ...updatedFishArray,
+                data.fish[selectedIndex],
+              ];
+            }
+          }
+  
+          // Update storageFish
           const existingStorageFish = data.storageFish.find(
             (fish) => fish.name === selectedFish.name
           );
@@ -225,7 +198,7 @@ const StorageMenu = ({ refreshAquarium }) => {
           const updatedStorageFish = existingStorageFish
             ? data.storageFish.map((fish) =>
                 fish.name === selectedFish.name
-                  ? { ...fish, count: fish.count + 1 }
+                  ? { ...fish, count: fish.count + (moveAll ? selectedFish.count : 1) }
                   : fish
               )
             : [
@@ -233,8 +206,8 @@ const StorageMenu = ({ refreshAquarium }) => {
                 {
                   name: selectedFish.name,
                   fileName: selectedFish.fileName,
-                  rarity: selectedFish.rarity || "common", // Default to "common" if rarity is missing
-                  count: 1,
+                  rarity: selectedFish.rarity || "common",
+                  count: moveAll ? selectedFish.count : 1,
                 },
               ];
   
@@ -248,7 +221,12 @@ const StorageMenu = ({ refreshAquarium }) => {
           setAquariumFish(updatedFishArray);
           setStorageFish(updatedStorageFish);
   
-          Alert.alert("Success", `${selectedFish.name} has been moved to storage.`);
+          Alert.alert(
+            "Success",
+            `${selectedFish.name} has been moved to storage${
+              moveAll ? " (all)" : ""
+            }.`
+          );
         }
       } catch (error) {
         console.error("Error moving fish to storage:", error);
@@ -261,6 +239,7 @@ const StorageMenu = ({ refreshAquarium }) => {
   
   
   
+  
 
   const renderFishItems = (fishArray, isFromStorage) => {
     if (fishArray.length === 0) {
@@ -270,16 +249,29 @@ const StorageMenu = ({ refreshAquarium }) => {
         </View>
       );
     }
-
+  
+    // Group fish by name and fileName, and count duplicates
+    const groupedFish = fishArray.reduce((acc, fish) => {
+      const existingFish = acc.find(
+        (item) => item.name === fish.name && item.fileName === fish.fileName
+      );
+      if (existingFish) {
+        existingFish.count += isFromStorage ? fish.count || 1 : 1;
+      } else {
+        acc.push({ ...fish, count: isFromStorage ? fish.count || 1 : 1 });
+      }
+      return acc;
+    }, []);
+  
     return (
       <View style={styles.itemGrid}>
-        {fishArray.map((item, index) => (
+        {groupedFish.map((item, index) => (
           <TouchableOpacity
             style={styles.itemContainer}
             key={`${item.name}-${index}`}
             onPress={() => handlePress(item, isFromStorage)}
           >
-            {item.count && (
+            {item.count > 1 && (
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>{item.count}</Text>
               </View>
@@ -291,19 +283,26 @@ const StorageMenu = ({ refreshAquarium }) => {
       </View>
     );
   };
+  
+  
+  
 
-  const renderBackgroundItems = () => {
-    if (storageBackgrounds.length === 0) {
+  const renderBackgroundItems = (backgroundsArray, isCurrent) => {
+    if (backgroundsArray.length === 0 && !isCurrent) {
       return (
         <View style={styles.emptyMessageContainer}>
-          <Text>No backgrounds available.</Text>
+          <Text style={styles.emptyMessageText}>No backgrounds available.</Text>
         </View>
       );
     }
-
+  
+    const filteredBackgrounds = isCurrent
+      ? backgroundsArray // Show all backgrounds for "Current Background"
+      : backgroundsArray.filter((bg) => bg.fileName !== currentBackground); // Exclude currentBackground from storage
+  
     return (
       <View style={styles.itemGrid}>
-        {storageBackgrounds.map((background, index) => (
+        {filteredBackgrounds.map((background, index) => (
           <TouchableOpacity
             key={`${background.name}-${index}`}
             onPress={() => handleBackgroundSelect(background)}
@@ -313,28 +312,78 @@ const StorageMenu = ({ refreshAquarium }) => {
             <Text style={styles.itemName}>{background.name}</Text>
           </TouchableOpacity>
         ))}
+        {isCurrent && currentBackground && (
+          <TouchableOpacity
+            key="current-background"
+            onPress={() =>
+              handleBackgroundSelect({
+                name: initialBackgrounds.find(
+                  (bg) => bg.fileName === currentBackground
+                )?.name || "Default Background", // Find the name dynamically
+                fileName: currentBackground,
+              })
+            }
+            style={styles.itemContainer}
+          >
+            <Image
+              source={backgroundImageMap[currentBackground]}
+              style={styles.itemImage}
+            />
+            <Text style={styles.itemName}>
+              {initialBackgrounds.find((bg) => bg.fileName === currentBackground)
+                ?.name || "Default Background"}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
   
   
+  
+  
 
   return (
     <GestureHandlerRootView>
-      <ScrollView 
-        style={styles.container}
-        contentContainerStyle={{ paddingBottom: 16 }} 
-        keyboardShouldPersistTaps="handled" 
-      >
-        <Text style={styles.title}>Storage</Text>
-        {renderFishItems(storageFish, true)}
-        
-        <Text style={styles.title}>Aquarium</Text>
-        {renderFishItems(aquariumFish, false)}
+      <View style={styles.categoryContainer}>
+  <TouchableOpacity
+    style={[
+      styles.categoryButton,
+      selectedCategory === "Storage" && styles.activeCategoryButton,
+    ]}
+    onPress={() => setSelectedCategory("Storage")}
+  >
+    <Text style={styles.categoryButtonText}>Storage</Text>
+  </TouchableOpacity>
+  <TouchableOpacity
+    style={[
+      styles.categoryButton,
+      selectedCategory === "Aquarium" && styles.activeCategoryButton,
+    ]}
+    onPress={() => setSelectedCategory("Aquarium")}
+  >
+    <Text style={styles.categoryButtonText}>Aquarium</Text>
+  </TouchableOpacity>
+</View>
 
-        <Text style={styles.title}>Backgrounds</Text>
-        {renderBackgroundItems()}
 
+<ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+  {selectedCategory === "Storage" ? (
+    <>
+      <Text style={styles.title}>Fish</Text>
+      {renderFishItems(storageFish, true)}
+      <Text style={styles.title}>Backgrounds</Text>
+      {renderBackgroundItems(storageBackgrounds, false)}
+    </>
+  ) : (
+    <>
+    <Text style={styles.title}>Current Background</Text>
+    {renderBackgroundItems([], true)}
+      <Text style={styles.title}>Fish</Text>
+      {renderFishItems(aquariumFish, false)}
+      
+    </>
+  )}
         {/* Modal for fish details */}
         <Modal
           animationType="fade"
@@ -349,13 +398,28 @@ const StorageMenu = ({ refreshAquarium }) => {
                   <Text style={styles.modalText}>{selectedFish.name}</Text>
                   <Image source={imageMap[selectedFish.fileName]} style={styles.modalImage} />
                   {selectedFish.isFromStorage ? (
+                    // If fish is in storage, allow adding to the aquarium
                     <TouchableOpacity style={styles.addButton} onPress={handleAddToAquarium}>
                       <Text style={styles.addButtonText}>Add to Aquarium</Text>
                     </TouchableOpacity>
                   ) : (
-                    <TouchableOpacity style={styles.addButton} onPress={handleMoveToStorage}>
-                      <Text style={styles.addButtonText}>Move to Storage</Text>
-                    </TouchableOpacity>
+                    // If fish is in the aquarium, allow moving one or all back to storage
+                    <>
+                      <TouchableOpacity
+                        style={styles.addButton}
+                        onPress={() => handleMoveToStorage(false)} // Move one fish to storage
+                      >
+                        <Text style={styles.addButtonText}>Move to Storage</Text>
+                      </TouchableOpacity>
+                      {selectedFish.count > 1 && ( // Only show "Move All to Storage" if count > 1
+                        <TouchableOpacity
+                          style={styles.addButton}
+                          onPress={() => handleMoveToStorage(true)} // Move all duplicates to storage
+                        >
+                          <Text style={styles.addButtonText}>Move All to Storage</Text>
+                        </TouchableOpacity>
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -365,7 +429,86 @@ const StorageMenu = ({ refreshAquarium }) => {
             </View>
           </View>
         </Modal>
-        
+
+
+
+        {/* Background Modal */}
+        <Modal
+  animationType="fade"
+  transparent={true}
+  visible={isBackgroundModalVisible}
+  onRequestClose={() => setIsBackgroundModalVisible(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContent}>
+      {selectedBackground && (
+        <>
+          <Text style={styles.modalText}>{selectedBackground.name}</Text>
+          <Image source={backgroundImageMap[selectedBackground.fileName]} style={styles.modalImage} />
+          {/* Show "Remove Background" button only if in Aquarium and not the default background */}
+          {selectedCategory === "Aquarium" && selectedBackground.fileName !== "backgroundSample.png" && (
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={async () => {
+                const user = auth.currentUser;
+                if (user) {
+                  const uid = user.uid;
+                  const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
+                  try {
+                    // Update Firestore with the default background
+                    await updateDoc(aquariumDocRef, { currentBackground: "backgroundSample.png" });
+                    // Update local state
+                    setCurrentBackground("backgroundSample.png");
+                    Alert.alert("Success", "Background has been replaced with the default.");
+                  } catch (error) {
+                    console.error("Error replacing background:", error);
+                    Alert.alert("Error", "Failed to replace the background. Please try again.");
+                  } finally {
+                    setIsBackgroundModalVisible(false);
+                  }
+                }
+              }}
+            >
+              <Text style={styles.addButtonText}>Remove Background</Text>
+            </TouchableOpacity>
+          )}
+          {/* Button to apply a new background */}
+          {selectedBackground.fileName !== currentBackground && (
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={async () => {
+                const user = auth.currentUser;
+                if (user) {
+                  const uid = user.uid;
+                  const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
+                  try {
+                    await updateDoc(aquariumDocRef, { currentBackground: selectedBackground.fileName });
+                    setCurrentBackground(selectedBackground.fileName); // Update local state
+                    Alert.alert("Success", `${selectedBackground.name} has been applied.`);
+                  } catch (error) {
+                    console.error("Error applying background:", error);
+                    Alert.alert("Error", "Failed to apply the background. Please try again.");
+                  } finally {
+                    setIsBackgroundModalVisible(false);
+                  }
+                }
+              }}
+            >
+              <Text style={styles.addButtonText}>Apply Background</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setIsBackgroundModalVisible(false)}
+          >
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  </View>
+</Modal>
+
       </ScrollView>
     </GestureHandlerRootView>
   );
@@ -410,7 +553,7 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#A0522D",
+    color: Colors.theme.orange,
   },
   countBadge: {
     position: "absolute",
@@ -483,4 +626,29 @@ const styles = StyleSheet.create({
     color: "#A0522D",
     fontStyle: "italic",
   },
+  categoryContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginVertical: 10,
+    
+  },
+  categoryButton: {
+    padding: 10,
+    borderRadius: 20,
+    backgroundColor: Colors.theme.yellow,
+    borderColor: Colors.theme.brown,
+    borderWidth: 3,
+    width: "40%",
+    alignItems: "center",
+  },
+  activeCategoryButton: {
+    backgroundColor: "#FFB74D",
+    
+  },
+  categoryButtonText: {
+    color: Colors.theme.brown,
+    fontWeight: "bold",
+  },
+  
+  
 });

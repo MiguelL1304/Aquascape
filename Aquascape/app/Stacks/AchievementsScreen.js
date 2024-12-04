@@ -300,9 +300,26 @@ const styles = StyleSheet.create({
     shellContainer: { flexDirection: "row", alignItems: "center", marginTop: 10 },
     shellImage: { width: 30, height: 30, marginRight: 5 },
     shellCount: { fontSize: 16, fontWeight: "bold", color: Colors.white },
-    statusContainer: { alignItems: "center", marginVertical: 20 },
-    statusImage: { width: 120, height: 120, borderRadius: 60 },
-    statusText: { fontSize: 20, fontWeight: "bold", color: Colors.primary, marginTop: 10 },
+    statusContainer: { alignItems: "center", marginVertical: 20,
+        
+     },
+    statusImage: { 
+        width: 140, 
+        height: 140, 
+        borderRadius: 70,
+        borderWidth: 4,
+        borderColor: Colors.white,
+        
+    },
+    statusText: { 
+        fontSize: 25,
+        fontWeight: "bold",
+        color: Colors.theme.brown,
+        marginTop: 10,
+        textShadowColor: "rgba(0, 0, 0, 0.5)", // Shadow color
+        textShadowOffset: { width: 2, height: 2 }, // Shadow offset (horizontal and vertical)
+        textShadowRadius: 3,
+     },
     headerText: {
         fontSize: 24,
         fontWeight: "bold",
