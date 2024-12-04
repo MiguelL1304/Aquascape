@@ -13,24 +13,24 @@ const StoreScreen = ({ navigation }) => {
     { id: '5', name: 'test', image: require("../../assets/cat.gif"), price: '100', unlocked: true,requirement: { type: 'productivity', hours: 10 } },
     { id: '6', name: 'tester fishy', image: require("../../assets/cat.gif"), price: '100', unlocked: true, requirement: { type: 'productivity', hours: 24 } },
     { id: "7", name: "Blue Tang", image: require("../../assets/fish/Bluetang.gif"), price: 100, fileName: "Bluetang.gif", rarity: "common", unlocked: false, requiredBadge: 'Book Fish' },
-    { id: "8", name: "Cat Fish", image: require("../../assets/fish/Catfish.gif"), price: 100, fileName: "Catfish.gif", rarity: "rare", unlocked: false, requireAllBadges: true },
+    { id: "8", name: "Cat Fish", image: require("../../assets/fish/Catfish.gif"), price: 100, fileName: "Catfish.gif", rarity: "rare", unlocked: false, requiredBadge: 'Majesty' },
     { id: "9", name: "Goldfish", image: require("../../assets/fish/Goldfish.gif"), price: 100, fileName: "Goldfish.gif", rarity: "common", unlocked: false,requiredBadge: 'Wave' },
     { id: "10", name: "Clownfish", image: require("../../assets/fish/Clownfish.gif"), price: 100, fileName: "Clownfish.gif", rarity: "common", unlocked: false, requiredBadge: 'Gym Shark' },
 
   ]);
 
   const [backgroundItems, setBackgroundItems] = useState([
-    { id: "11", name: "Desert", image: require("../../assets/backgrounds/desert-bg.png"), price: 200, unlocked: true },
-    { id: "12", name: "Futuristic City", image: require("../../assets/backgrounds/futuristic-city-bg.png"), price: 300, unlocked: true },
-    { id: "13", name: "Jungle", image: require("../../assets/backgrounds/jungle-bg.png"), price: 250, unlocked: true },
-    { id: "14", name: "Space", image: require("../../assets/backgrounds/space-bg.png"), price: 350, unlocked: true },
+    { id: "11", name: "Desert", image: require("../../assets/backgrounds/desert-bg.png"), price: 200, fileName: "desert-bg.png", unlocked: true },
+    { id: "12", name: "Futuristic City", image: require("../../assets/backgrounds/futuristic-city-bg.png"), price: 300, fileName: "futuristic-city-bg.png", unlocked: true },
+    { id: "13", name: "Jungle", image: require("../../assets/backgrounds/jungle-bg.png"), price: 250, fileName: "jungle-bg.png", unlocked: true },
+    { id: "14", name: "Space", image: require("../../assets/backgrounds/space-bg.png"), price: 350, fileName: "space-bg.png", unlocked: true },
   ]);
+  
 
   const [selectedCategory, setSelectedCategory] = useState("Fish");
   const filteredItems = selectedCategory === "Fish" ? items : backgroundItems;
-  const allPossibleBadges = ['Lotus', 'Conch', 'Starfish', 'Coral', 'Wave', 'Majesty', 'Power Crab', 'Gym Shark',
-    'Nerd Fish', 'Book Fish', 'Worker Whale', 'Business Turtle',
-  ];
+
+  
 
   const [seashells, setSeashells] = useState(0);
   const [userFish, setUserFish] = useState([]);
@@ -39,30 +39,30 @@ const StoreScreen = ({ navigation }) => {
   const [userFishCounts, setUserFishCounts] = useState({});
   const [earnedBadges, setEarnedBadges] = useState([]);
 
-  // const [userProgress, setUserProgress] = useState({});
+  const [userProgress, setUserProgress] = useState({});
 
-  // useEffect(() => {
-  //   const fetchUserProgress = async () => {
-  //     const userId = auth.currentUser?.uid;
-  //     if (!userId) {
-  //       console.error('User is not authenticated');
-  //       return;
-  //     }
+  useEffect(() => {
+    const fetchUserProgress = async () => {
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
+        console.error('User is not authenticated');
+        return;
+      }
 
-  //     const progressDocRef = doc(firestoreDB, 'profile', userId, 'badges', 'badgeData');
-  //     const progressDoc = await getDoc(progressDocRef);
+      const progressDocRef = doc(firestoreDB, 'profile', userId, 'badges', 'badgeData');
+      const progressDoc = await getDoc(progressDocRef);
 
-  //     if (progressDoc.exists()) {
-  //       const data = progressDoc.data();
-  //       setEarnedBadges(data.earnedBadges || []); // Update earnedBadges from Firestore
-  //       console.log('Fetched user progress:', data);
-  //     } else {
-  //       console.log('No progress data found in Firestore.');
-  //     }
-  //   };
+      if (progressDoc.exists()) {
+        const data = progressDoc.data();
+        setEarnedBadges(data.earnedBadges || []); // Update earnedBadges from Firestore
+        console.log('Fetched user progress:', data);
+      } else {
+        console.log('No progress data found in Firestore.');
+      }
+    };
 
-  //   fetchUserProgress();
-  // }, []);
+    fetchUserProgress();
+  }, []);
 
 useEffect(() => {
   const fetchBadges = async () => {
@@ -113,12 +113,6 @@ useEffect(() => {
 
 useEffect(() => {
   const updatedItems = items.map(item => {
-    // unlock all badges to unlock catfish
-    if (item.requireAllBadges) {
-      const hasAllBadges = allPossibleBadges.every(badge => earnedBadges.includes(badge));
-      return { ...item, unlocked: hasAllBadges };
-    }
-    // unlock specific badges to unlock special fish
     if (item.requiredBadge && earnedBadges.includes(item.requiredBadge)) {
       return { ...item, unlocked: true };
     }
@@ -169,18 +163,15 @@ useEffect(() => {
 
   const handlePress = (item) => {
     if (!item.unlocked) {
-      const requirementMessage = item.requireAllBadges
-        ? "You need to earn all badges to unlock this item."
-        : item.requiredBadge
+      const requirementMessage = item.requiredBadge
         ? `You need the ${item.requiredBadge} badge to unlock this item.`
         : 'This item is locked.';
       Alert.alert('Locked Item', requirementMessage);
       return;
     }
     setSelectedItem(item);
-    setIsModalVisible(true);
+    setIsModalVisible(true); // Open modal on item press
   };
-  
   
 
   const closeModal = () => {
@@ -189,11 +180,11 @@ useEffect(() => {
 
   const handleBuy = async () => {
     if (!selectedItem) return;
-
+  
     const user = auth.currentUser;
     if (user) {
       const uid = user.uid;
-
+  
       try {
         // Check if the user has enough seashells
         if (seashells < selectedItem.price) {
@@ -201,71 +192,81 @@ useEffect(() => {
           closeModal();
           return;
         }
-
-        // Fetch aquarium data
+  
         const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
         const aquariumSnap = await getDoc(aquariumDocRef);
-
+  
         if (!aquariumSnap.exists()) {
           Alert.alert("Error", "Aquarium data not found.");
           closeModal();
           return;
         }
-
+  
         const aquariumData = aquariumSnap.data();
-        const storageFish = aquariumData.storageFish || [];
-
-        // Check if the fish already exists in storage
-        const fishInStorage = storageFish.find((fish) => fish.name === selectedItem.name);
-
-        if (fishInStorage) {
-          // Enforce rarity and count rules
-          if (selectedItem.rarity === "rare") {
-            Alert.alert("Purchase Failed", "You can only own one rare fish.");
-            closeModal();
-            return;
-          } else if (selectedItem.rarity === "common" && fishInStorage.count >= 5) {
-            Alert.alert("Purchase Failed", "You can only own up to 5 of this common fish.");
-            closeModal();
-            return;
+        
+        // Check if it's a fish or a background
+        if (selectedItem.fileName && selectedCategory === "Fish") {
+          // Handle fish purchase
+          const storageFish = aquariumData.storageFish || [];
+          const fishInStorage = storageFish.find((fish) => fish.name === selectedItem.name);
+  
+          if (fishInStorage) {
+            // Enforce rarity and count rules
+            if (selectedItem.rarity === "rare") {
+              Alert.alert("Purchase Failed", "You can only own one rare fish.");
+              closeModal();
+              return;
+            } else if (selectedItem.rarity === "common" && fishInStorage.count >= 5) {
+              Alert.alert("Purchase Failed", "You can only own up to 5 of this common fish.");
+              closeModal();
+              return;
+            }
+  
+            // Increment the count for the fish already in storage
+            fishInStorage.count += 1;
+          } else {
+            // Add the new fish to storage
+            storageFish.push({
+              name: selectedItem.name,
+              fileName: selectedItem.fileName,
+              rarity: selectedItem.rarity,
+              count: 1,
+            });
           }
-
-          // Increment the count for the fish already in storage
-          fishInStorage.count += 1;
+  
+          await updateDoc(aquariumDocRef, { storageFish });
+          setSeashells(seashells - selectedItem.price);
+          Alert.alert("Purchase Successful", `${selectedItem.name} has been added to your storage.`);
+        } else if (selectedItem.fileName && selectedCategory === "Backgrounds") {
+          // Handle background purchase
+          const storageBackgrounds = aquariumData.storageBackgrounds || [];
+  
+          if (!storageBackgrounds.some((bg) => bg.fileName === selectedItem.fileName)) {
+            storageBackgrounds.push({
+              name: selectedItem.name,
+              fileName: selectedItem.fileName,
+            });
+            await updateDoc(aquariumDocRef, { storageBackgrounds });
+            setSeashells(seashells - selectedItem.price);
+            Alert.alert("Purchase Successful", `${selectedItem.name} background has been added to your storage.`);
+          } else {
+            Alert.alert("Already Purchased", "You already own this background.");
+          }
         } else {
-          // Add the new fish to storage
-          storageFish.push({
-            name: selectedItem.name,
-            fileName: selectedItem.fileName,
-            rarity: selectedItem.rarity,
-            count: 1,
-          });
+          Alert.alert("Error", "Item type not recognized.");
         }
-
-        // Deduct seashells
-        const userProfileRef = doc(firestoreDB, "profile", uid);
-        await updateDoc(userProfileRef, {
-          seashells: seashells - selectedItem.price,
-        });
-        setSeashells(seashells - selectedItem.price);
-
-        // Update the storageFish array in Firestore
-        await updateDoc(aquariumDocRef, { storageFish });
-
-        // Recalculate fish counts
-        const updatedCounts = { ...userFishCounts };
-        updatedCounts[selectedItem.name] = (updatedCounts[selectedItem.name] || 0) + 1;
-        setUserFishCounts(updatedCounts);
-
-        Alert.alert("Purchase Successful", `${selectedItem.name} has been added to your storage.`);
       } catch (error) {
         console.error("Error during purchase:", error);
         Alert.alert("Error", "An error occurred during the purchase. Please try again.");
       }
-
+  
       closeModal();
     }
   };
+  
+  
+  
+  
 
   const renderItem = ({ item }) => {
     // Determine if the item is sold out

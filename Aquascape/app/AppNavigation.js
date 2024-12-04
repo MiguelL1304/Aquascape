@@ -18,7 +18,6 @@ import AquariumScreen from './Stacks/home/AquariumScreen';
 import TasksScreen from './Stacks/home/TasksScreen';
 import TimerScreen from './Stacks/home/TimerScreen';
 import AchievementsScreen from './Stacks/AchievementsScreen';
-import BadgesScreen from './Stacks/BadgesScreen';
 import MyStatsScreen from './Stacks/stats/MyStatsScreen';
 
 

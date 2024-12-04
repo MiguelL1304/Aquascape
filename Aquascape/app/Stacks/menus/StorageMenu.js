@@ -17,40 +17,122 @@ const imageMap = {
   "Happyfish.gif": require("../../../assets/fish/Happyfish.gif"),
 };
 
+const backgroundImageMap = {
+  "desert-bg.png": require("../../../assets/backgrounds/desert-bg.png"),
+  "futuristic-city-bg.png": require("../../../assets/backgrounds/futuristic-city-bg.png"),
+  "jungle-bg.png": require("../../../assets/backgrounds/jungle-bg.png"),
+  "space-bg.png": require("../../../assets/backgrounds/space-bg.png"),
+};
+
+
+const initialBackgrounds = [
+  { fileName: "desert-bg.png", name: "Desert" },
+  { fileName: "futuristic-city-bg.png", name: "Futuristic City" },
+  { fileName: "jungle-bg.png", name: "Jungle" },
+  { fileName: "space-bg.png", name: "Space" }
+];
+
 const StorageMenu = ({ refreshAquarium }) => {
   const [storageFish, setStorageFish] = useState([]);
   const [aquariumFish, setAquariumFish] = useState([]);
+
+  const [storageBackgrounds, setStorageBackgrounds] = useState([]);
+
 
   const [selectedFish, setSelectedFish] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
   useEffect(() => {
-    const fetchFishData = async () => {
+    const fetchData = async () => {
       const user = auth.currentUser;
       if (user) {
         const uid = user.uid;
         const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
-
         try {
           const aquariumSnap = await getDoc(aquariumDocRef);
           if (aquariumSnap.exists()) {
             const data = aquariumSnap.data();
             setStorageFish(data.storageFish || []);
             setAquariumFish(data.fish || []);
+            setStorageBackgrounds(data.storageBackgrounds || []); // Only fetch purchased backgrounds
+          } else {
+            console.log("Aquarium document does not exist!");
           }
         } catch (error) {
-          console.error("Error fetching fish data:", error);
+          console.error("Error fetching data:", error);
         }
       }
     };
 
-    fetchFishData();
+    fetchData();
   }, []);
+  
+
+  // useEffect(() => {
+  //   const initializeAndFetchData = async () => {
+  //     const user = auth.currentUser;
+  //     if (user) {
+  //       const uid = user.uid;
+  //       const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
+  //       try {
+  //         const aquariumSnap = await getDoc(aquariumDocRef);
+  //         if (!aquariumSnap.exists()) {
+  //           await setDoc(aquariumDocRef, { storageBackgrounds: initialBackgrounds, storageFish: [], fish: [] });
+  //           setStorageBackgrounds(initialBackgrounds);
+  //         } else {
+  //           const data = aquariumSnap.data();
+  //           setStorageFish(data.storageFish || []);
+  //           setAquariumFish(data.fish || []);
+  //           // Initialize backgrounds if they don't exist
+  //           if (!data.storageBackgrounds || data.storageBackgrounds.length === 0) {
+  //             await updateDoc(aquariumDocRef, { storageBackgrounds: initialBackgrounds });
+  //             setStorageBackgrounds(initialBackgrounds);
+  //           } else {
+  //             setStorageBackgrounds(data.storageBackgrounds);
+  //           }
+  //         }
+  //       } catch (error) {
+  //         console.error("Error initializing or fetching data:", error);
+  //       }
+  //     }
+  //   };
+  
+  //   initializeAndFetchData();
+  // }, []);
+  
 
   const handlePress = (fish, isFromStorage) => {
     setSelectedFish({ ...fish, isFromStorage });
     setIsModalVisible(true);
   };
+
+  const handleBackgroundSelect = (background) => {
+    Alert.alert(
+      "Background Selected",
+      `You selected the ${background.name} background. Would you like to apply it?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Apply",
+          onPress: async () => {
+            const user = auth.currentUser;
+            if (user) {
+              const uid = user.uid;
+              const aquariumDocRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
+              try {
+                await updateDoc(aquariumDocRef, { currentBackground: background.fileName });
+                Alert.alert("Success", `${background.name} has been applied.`);
+              } catch (error) {
+                console.error("Error applying background:", error);
+                Alert.alert("Error", "Failed to apply the background. Please try again.");
+              }
+            }
+          },
+        },
+      ]
+    );
+  };
+  
 
   const closeModal = () => {
     setIsModalVisible(false);
@@ -210,6 +292,33 @@ const StorageMenu = ({ refreshAquarium }) => {
     );
   };
 
+  const renderBackgroundItems = () => {
+    if (storageBackgrounds.length === 0) {
+      return (
+        <View style={styles.emptyMessageContainer}>
+          <Text>No backgrounds available.</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.itemGrid}>
+        {storageBackgrounds.map((background, index) => (
+          <TouchableOpacity
+            key={`${background.name}-${index}`}
+            onPress={() => handleBackgroundSelect(background)}
+            style={styles.itemContainer}
+          >
+            <Image source={backgroundImageMap[background.fileName]} style={styles.itemImage} />
+            <Text style={styles.itemName}>{background.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+  
+  
+
   return (
     <GestureHandlerRootView>
       <ScrollView 
@@ -222,6 +331,9 @@ const StorageMenu = ({ refreshAquarium }) => {
         
         <Text style={styles.title}>Aquarium</Text>
         {renderFishItems(aquariumFish, false)}
+
+        <Text style={styles.title}>Backgrounds</Text>
+        {renderBackgroundItems()}
 
         {/* Modal for fish details */}
         <Modal
