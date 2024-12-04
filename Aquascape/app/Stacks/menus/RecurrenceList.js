@@ -20,7 +20,7 @@ const categoryColors = {
   Other: '#a9a9a9',
 };
 
-const EditRecurrence = ({ closeBottomSheet }) => {
+const RecurrenceList = ({ closeBottomSheet, openEditRecurrenceBottomSheet, setSelectedRecurrence  }) => {
   const [recurrenceData, setRecurrenceData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,17 +55,6 @@ const EditRecurrence = ({ closeBottomSheet }) => {
     fetchRecurrenceData();
   }, []);
 
-  // Placeholder functions for edit and delete
-  const handleEditTask = (task) => {
-    console.log('Editing task:', task);
-    // Add your edit logic here
-  };
-
-  const handleDeleteTask = (task) => {
-    console.log('Deleting task:', task);
-    // Add your delete logic here
-  };
-
   // Group recurrence data by category
   const groupRecurrenceByCategory = (data) => {
     const grouped = {};
@@ -77,6 +66,12 @@ const EditRecurrence = ({ closeBottomSheet }) => {
   };
 
   const groupedData = groupRecurrenceByCategory(recurrenceData);
+
+  const handleEditTask = (task) => {
+    setSelectedRecurrence(task); // Pass the selected task to the parent
+    closeBottomSheet(); // Close the RecurrenceList bottom sheet
+    openEditRecurrenceBottomSheet(); // Open the EditTaskRecurrence bottom sheet
+  };
 
   if (loading) {
     return (
@@ -100,7 +95,7 @@ const EditRecurrence = ({ closeBottomSheet }) => {
                   styles.taskItemContainer,
                   { backgroundColor: categoryColors[task.category] },
                 ]}
-                onPress={() => console.log('Viewing task:', task)}
+                onPress={() => handleEditTask(task)}
               >
                 <View style={styles.taskTextContainer}>
                   <Text style={styles.taskItem}>{task.title}</Text>
@@ -177,4 +172,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default EditRecurrence;
+export default RecurrenceList;
