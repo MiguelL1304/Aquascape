@@ -463,6 +463,7 @@ const TasksScreen = ({ navigation }) => {
       try {
         await uploadTasks(monthKey, weekTag, tasksToUpload);
         console.log(`Task uploaded successfully for date: ${taskWithId.date}`);
+
       } catch (error) {
         console.error("Error uploading task:", error);
       }
@@ -574,6 +575,7 @@ const TasksScreen = ({ navigation }) => {
             console.log(
               `Recurring tasks uploaded successfully for month: ${monthKey}, week: ${weekTag}`
             );
+
           }
         }
         console.log("task count updated for all recurring tasks!")

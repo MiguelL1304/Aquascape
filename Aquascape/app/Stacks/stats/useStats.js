@@ -22,7 +22,74 @@ const useStats = () => {
 
   const userId = auth.currentUser?.uid;
 
+
+
+  // FETCH ALL STATS
+  // const fetchStats = async () => {
+  //   if (!userId) {
+  //     console.error("User not authenticated.");
+  //     return;
+  //   }
+
+
+  //   try {
+  //     const statsRef = collection(db, "profile", userId, "stats");
+  //     const dailyDoc = await getDoc(doc(statsRef, "daily"));
+  //     const weeklyDoc = await getDoc(doc(statsRef, "weekly"));
+  //     const monthlyDoc = await getDoc(doc(statsRef, "monthly"));
+  //     const yearlyDoc = await getDoc(doc(statsRef, "yearly"));
+
+  //     setStats({
+  //       daily: dailyDoc.exists() ? dailyDoc.data() : {},
+  //       weekly: weeklyDoc.exists() ? weeklyDoc.data() : {},
+  //       monthly: monthlyDoc.exists() ? monthlyDoc.data() : {},
+  //       yearly: yearlyDoc.exists() ? yearlyDoc.data() : {},
+  //     });
+  //   } catch (error) {
+  //     console.error("Error fetching stats:", error);
+  //   }
+  // };
+
   const fetchStats = async () => {
+    if (!userId) {
+      console.error("User not authenticated.");
+      return;
+    }
+  
+    const statsRef = doc(db, "profile", userId, "stats", "daily");
+    const currentDate = new Date().toISOString().split("T")[0]; // e.g., "2024-12-04"
+  
+    try {
+      const dailySnapshot = await getDoc(statsRef);
+  
+      if (dailySnapshot.exists()) {
+        const data = dailySnapshot.data();
+        const todayStats = data[currentDate] || { categoryBreakdown: {}, totalTimeLogged: 0 };
+  
+        console.log("Fetched daily stats for today:", todayStats);
+  
+        // Set only today's stats in `stats.daily`
+        setStats((prev) => ({
+          ...prev,
+          daily: todayStats,
+        }));
+      } else {
+        console.log("No stats found for today.");
+        setStats((prev) => ({
+          ...prev,
+          daily: { categoryBreakdown: {}, totalTimeLogged: 0 },
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching daily stats:", error);
+    }
+  };
+  
+
+
+
+  // FETCH *DAILY* STATS
+  const fetchDailyStats = async () => {
     if (!userId) {
       console.error("User not authenticated.");
       return;
@@ -31,174 +98,248 @@ const useStats = () => {
     try {
       const statsRef = collection(db, "profile", userId, "stats");
       const dailyDoc = await getDoc(doc(statsRef, "daily"));
-      const weeklyDoc = await getDoc(doc(statsRef, "weekly"));
-      const monthlyDoc = await getDoc(doc(statsRef, "monthly"));
-      const yearlyDoc = await getDoc(doc(statsRef, "yearly"));
+      const currentDate = new Date().toISOString().split("T")[0];
 
-      setStats({
-        daily: dailyDoc.exists() ? dailyDoc.data() : {},
-        weekly: weeklyDoc.exists() ? weeklyDoc.data() : {},
-        monthly: monthlyDoc.exists() ? monthlyDoc.data() : {},
-        yearly: yearlyDoc.exists() ? yearlyDoc.data() : {},
-      });
-    } catch (error) {
-      console.error("Error fetching stats:", error);
+      if (dailyDoc.exists()) {
+        const data = dailyDoc.data();
+        const todayStats = data[currentDate] || {};
+        setStats((prevStats) => ({
+          ...prevStats,
+          daily: todayStats,
+        }));
+        console.log("Fetched daily stats", todayStats);
+      } else {
+        console.log("No stats found for today :( ");
+        setStats((prevStats) => ({
+          ...prevStats,
+          daily: {},
+        }));
+      }
+    } catch(error) {
+      console.error("Error fetching daily stats:", error);
     }
   };
 
-  const updateTaskCount = async (task, operation = "add") => {
+  const getWeekRange = (date) => {
+    const day = date.getDate();
+  
+    if (day <= 7) return "1-7";
+    if (day <= 14) return "8-14";
+    if (day <= 21) return "15-21";
+    if (day <= 28) return "22-28";
+    return "29-end";
+  };
+  
+
+  const fetchWeeklyStats = async () => {
     if (!userId) {
       console.error("User not authenticated.");
       return;
     }
+  
+    const statsRef = doc(db, "profile", userId, "stats", "weekly");
+  
+    const currentDate = new Date();
+    const year = currentDate.getFullYear();
+    const month = `${year}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
+    const weekRange = getWeekRange(currentDate);
+  
+    try {
+      const weeklySnapshot = await getDoc(statsRef);
+  
+      if (weeklySnapshot.exists()) {
+        const data = weeklySnapshot.data();
+        //console.log("Raw weekly data:", data);
 
-    const category = task.category;
+        const thisWeekStats = data[month]?.[weekRange] || { categoryBreakdown: {}, totalTimeLogged: 0 };
+        //console.log("Fetched this week's stats:", thisWeekStats); // Debug log
+  
+        console.log("Fetched weekly stats:", thisWeekStats);
+        return thisWeekStats;
+      } else {
+        console.log("No weekly stats found.");
+        return { categoryBreakdown: {}, totalTimeLogged: 0 };
+      }
+    } catch (error) {
+      console.error("Error fetching weekly stats:", error);
+      return { categoryBreakdown: {}, totalTimeLogged: 0 };
+    }
+  }
 
-    const today = new Date(task.date);
-    const year = today.getFullYear();
-    const month = `${year}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-    const day = task.date; // YYYY-MM-DD format
+  // const updateTaskCount = async (task, operation = "add") => {
+  //   if (!userId) {
+  //     console.error("User not authenticated.");
+  //     return;
+  //   }
 
-    const weekStart = new Date(today);
-    const dayOfWeek = today.getDay();
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust for Monday
-    weekStart.setDate(today.getDate() + mondayOffset);
+  //   const category = task.category;
 
-    const statsRef = collection(db, "profile", userId, "stats");
+  //   const today = new Date(task.date);
+  //   const year = today.getFullYear();
+  //   const month = `${year}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  //   const day = task.date; // YYYY-MM-DD format
 
-    const batch = writeBatch(db);
+  //   const weekStart = new Date(today);
+  //   const dayOfWeek = today.getDay();
+  //   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust for Monday
+  //   weekStart.setDate(today.getDate() + mondayOffset);
 
-    // Batch updates
-    batch.set(
-      doc(statsRef, "daily"),
-      {
-        [day]: {
-          taskCounts: increment(operation === "add" ? 1 : -1),
-          [`categoryBreakdown.${category}`]: increment(
-            operation === "add" ? 1 : -1
-          ),
-        },
-      },
-      { merge: true }
-    );
+  //   const statsRef = collection(db, "profile", userId, "stats");
 
-    batch.set(
-      doc(statsRef, "weekly"),
-      {
-        [weekStart.toISOString().split("T")[0]]: {
-          taskCounts: increment(operation === "add" ? 1 : -1),
-          [`categoryBreakdown.${category}`]: increment(
-            operation === "add" ? 1 : -1
-          ),
-        },
-      },
-      { merge: true }
-    );
+  //   const batch = writeBatch(db);
 
-    batch.set(
-      doc(statsRef, "monthly"),
-      {
-        [month]: {
-          taskCounts: increment(operation === "add" ? 1 : -1),
-          [`categoryBreakdown.${category}`]: increment(
-            operation === "add" ? 1 : -1
-          ),
-        },
-      },
-      { merge: true }
-    );
+  //   // Batch updates
+  //   batch.set(
+  //     doc(statsRef, "daily"),
+  //     {
+  //       [day]: {
+  //         taskCounts: increment(operation === "add" ? 1 : -1),
+  //         [`categoryBreakdown.${category}`]: increment(
+  //           operation === "add" ? 1 : -1
+  //         ),
+  //       },
+  //     },
+  //     { merge: true }
+  //   );
 
-    batch.set(
-      doc(statsRef, "yearly"),
-      {
-        [year]: {
-          taskCounts: increment(operation === "add" ? 1 : -1),
-          [`categoryBreakdown.${category}`]: increment(
-            operation === "add" ? 1 : -1
-          ),
-        },
-      },
-      { merge: true }
-    );
+  //   batch.set(
+  //     doc(statsRef, "weekly"),
+  //     {
+  //       [weekStart.toISOString().split("T")[0]]: {
+  //         taskCounts: increment(operation === "add" ? 1 : -1),
+  //         [`categoryBreakdown.${category}`]: increment(
+  //           operation === "add" ? 1 : -1
+  //         ),
+  //       },
+  //     },
+  //     { merge: true }
+  //   );
 
-    await batch.commit();
-    console.log("Task counts updated in stats!");
-  };
+  //   batch.set(
+  //     doc(statsRef, "monthly"),
+  //     {
+  //       [month]: {
+  //         taskCounts: increment(operation === "add" ? 1 : -1),
+  //         [`categoryBreakdown.${category}`]: increment(
+  //           operation === "add" ? 1 : -1
+  //         ),
+  //       },
+  //     },
+  //     { merge: true }
+  //   );
+
+  //   batch.set(
+  //     doc(statsRef, "yearly"),
+  //     {
+  //       [year]: {
+  //         taskCounts: increment(operation === "add" ? 1 : -1),
+  //         [`categoryBreakdown.${category}`]: increment(
+  //           operation === "add" ? 1 : -1
+  //         ),
+  //       },
+  //     },
+  //     { merge: true }
+  //   );
+
+  //   await batch.commit();
+  //   console.log("Task counts updated in stats!");
+  // };
 
   const updateTimeLogged = async (task, operation = "add") => {
     if (!userId) {
       console.error("User not authenticated.");
       return;
     }
-
+  
     const duration = operation === "add" ? task.duration : -task.duration;
     const category = task.category;
+  
+    const currentDate = new Date();
+    const year = currentDate.getFullYear();
+    const dateKey = currentDate.toISOString().split("T")[0];
+    const month = `${year}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
+    const weekRange = getWeekRange(currentDate);
 
-    const today = new Date(task.date);
-    const year = today.getFullYear();
-    const month = `${year}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-    const day = task.date; // YYYY-MM-DD format
-
-    const weekStart = new Date(today);
-    const dayOfWeek = today.getDay();
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust for Monday
-    weekStart.setDate(today.getDate() + mondayOffset);
-
-    const statsRef = collection(db, "profile", userId, "stats");
+    const dailyStatsRef = doc(db, "profile", userId, "stats", "daily");
+    const weeklyStatsRef = doc(db, "profile", userId, "stats", "weekly");
 
     const batch = writeBatch(db);
 
-    // Batch updates
-    batch.set(
-      doc(statsRef, "daily"),
-      {
-        [day]: {
-          totalTimeLogged: increment(duration),
-          completedTasks: increment(operation === "add" ? 1 : -1),
-          [`categoryBreakdown.${category}`]: increment(duration),
+    // Add or update daily stats
+  batch.set(
+    dailyStatsRef,
+    {
+      [dateKey]: {
+        totalTimeLogged: increment(duration), // Increment total time logged
+        categoryBreakdown: {
+          [category]: increment(duration), // Increment category-specific time
         },
       },
-      { merge: true }
-    );
+    },
+    { merge: true }
+  );
 
-    batch.set(
-      doc(statsRef, "weekly"),
-      {
-        [weekStart.toISOString().split("T")[0]]: {
-          totalTimeLogged: increment(duration),
-          completedTasks: increment(operation === "add" ? 1 : -1),
-          [`categoryBreakdown.${category}`]: increment(duration),
+  // Add or update weekly stats
+  batch.set(
+    weeklyStatsRef,
+    {
+      [month]: {
+        [weekRange]: {
+          totalTimeLogged: increment(duration), // Increment total time logged
+          categoryBreakdown: {
+            [category]: increment(duration), // Increment category-specific time
+          },
         },
       },
-      { merge: true }
-    );
+    },
+    { merge: true }
+  );
 
-    batch.set(
-      doc(statsRef, "monthly"),
-      {
-        [month]: {
-          totalTimeLogged: increment(duration),
-          completedTasks: increment(operation === "add" ? 1 : -1),
-          [`categoryBreakdown.${category}`]: increment(duration),
-        },
-      },
-      { merge: true }
-    );
-
-    batch.set(
-      doc(statsRef, "yearly"),
-      {
-        [year]: {
-          totalTimeLogged: increment(duration),
-          completedTasks: increment(operation === "add" ? 1 : -1),
-          [`categoryBreakdown.${category}`]: increment(duration),
-        },
-      },
-      { merge: true }
-    );
-
+  // Commit batch updates
+  try {
     await batch.commit();
-    console.log("Time logged and completed tasks updated in stats!");
+    console.log(`Time logged successfully for daily and weekly stats.`);
+  } catch (error) {
+    console.error("Error logging time:", error);
+  }
+
+    // batch.set(
+    //   doc(statsRef, "weekly"),
+    //   {
+    //     [month]: {
+    //       [weekRange]: {
+    //         totalTimeLogged: increment(duration),
+    //         categoryBreakdown: {
+    //           [category]: increment(duration),
+    //         },
+    //       },
+    //     },
+    //   },
+    //   { merge: true }
+    // );
+
+    // await batch.commit();
+    // console.log(`Time logged successfully for weekly stats under ${month} -> ${weekRange}`)
+  
+    // try {
+    //   // Dynamically update or create fields for the current date
+    //   await setDoc(
+    //     statsRef,
+    //     {
+    //       [currentDate]: {
+    //         totalTimeLogged: increment(duration), // Update the total logged time
+    //         categoryBreakdown: {
+    //           [category]: increment(duration), // Update the category-specific time
+    //         },
+    //       },
+    //     },
+    //     { merge: true } // Merge updates with existing data
+    //   );
+  
+    //   console.log(`Time logged successfully for ${category}: ${duration} minutes`);
+    // } catch (error) {
+    //   console.error("Error logging time:", error);
+    // }
   };
 
   const updateStats = async (task, fromTasks = false) => {
@@ -291,10 +432,13 @@ const useStats = () => {
   return {
     stats,
     fetchStats,
-    updateTaskCount,
     updateTimeLogged,
     updateStats,
     markTaskAsComplete,
+    fetchDailyStats,
+    //updateTaskCount,
+    fetchWeeklyStats,
+    getWeekRange,
   };
 };
 
