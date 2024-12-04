@@ -268,10 +268,6 @@ const AddTask = ({ selectedDate, addTaskCallback, closeBottomSheet }) => {
         </View>
       </Modal>
 
-
-
-
-
     </View>
   );
 };

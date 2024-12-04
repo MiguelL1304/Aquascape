@@ -6,7 +6,8 @@ import { CheckBox } from 'react-native-elements';
 import AddTask from '../menus/AddTask';
 import EditTask from '../menus/EditTask';
 import TimerScreen from './TimerScreen';
-import EditRecurrence from '../menus/EditRecurrence';
+import RecurrenceList from '../menus/RecurrenceList';
+import EditTaskRecurrence from '../menus/EditTaskRecurrence';
 import { BottomSheetModal, BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -49,49 +50,55 @@ const TasksScreen = ({ navigation }) => {
   });
   const [tasks, setTasks] = useState({});
   const [newTask, setNewTask] = useState('');
-  const bottomSheetRef = useRef(null);
-  const editBottomSheetRef = useRef(null);
-  const recurrenceBottomSheetRef = useRef(null);
   const sheetRef = useRef(null);
   const [selectedTasks, setSelectedTasks] = useState({});
   const { minDate, maxDate } = getMinMaxDates();
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [selectedRecurrence, setSelectedRecurrence] = useState(null);
 
   const [loading, setLoading] = useState(true);
+
+  //Bottomsheet Refs
+  const bottomSheetRef = useRef(null);
+  const editBottomSheetRef = useRef(null);
+  const recurrenceBottomSheetRef = useRef(null);
+  const editRecurrenceBottomSheetRef = useRef(null);
 
   useEffect(() => {
     console.log('Initial selectedDate:', selectedDate);
   }, []);
 
+  //Refreshes the screen on render
   useFocusEffect(
     useCallback(() => {
-      const initializeScreen = async () => {
-        const today = new Date();
-        const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth() + 1; // Months are 0-indexed in JavaScript
-  
-        try {
-          setLoading(true); 
-          setTasks({});
-
-          //Check for saved recurrence details
-          await checkRecurrenceDoc();
-
-          // Ensure tasks for the current and next month exist
-          await createTasksForMonthAndNext(currentYear, currentMonth);
-  
-          // Fetch tasks for the current and next month to populate the calendar
-          await fetchTasksForCurrentAndNextMonth();
-        } catch (error) {
-          console.error("Error initializing screen:", error);
-        } finally {
-          setLoading(false); // Hide loading overlay when done
-        }
-      };
-  
       initializeScreen();
     }, [])
   );
+
+  //Refreshes Data
+  const initializeScreen = async () => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1; // Months are 0-indexed in JavaScript
+
+    try {
+      setLoading(true); 
+      setTasks({});
+
+      //Check for saved recurrence details
+      await checkRecurrenceDoc();
+
+      // Ensure tasks for the current and next month exist
+      await createTasksForMonthAndNext(currentYear, currentMonth);
+
+      // Fetch tasks for the current and next month to populate the calendar
+      await fetchTasksForCurrentAndNextMonth();
+    } catch (error) {
+      console.error("Error initializing screen:", error);
+    } finally {
+      setLoading(false); // Hide loading overlay when done
+    }
+  };
 
   const markedDates = useMemo(() => {
     const marked = {
@@ -457,7 +464,6 @@ const TasksScreen = ({ navigation }) => {
         await uploadTasks(monthKey, weekTag, tasksToUpload);
         console.log(`Task uploaded successfully for date: ${taskWithId.date}`);
 
-        console.log("TASK COUNT UPDATED IN STATS!!!");
       } catch (error) {
         console.error("Error uploading task:", error);
       }
@@ -759,6 +765,14 @@ const TasksScreen = ({ navigation }) => {
     recurrenceBottomSheetRef.current?.present();
   };
 
+  const closeEditRecurrenceBottomSheet = () => {
+    editRecurrenceBottomSheetRef.current?.dismiss();
+  };
+
+  const openEditRecurrenceBottomSheet = () => {
+    editRecurrenceBottomSheetRef.current?.present();
+  };
+
   const toggleTaskCompletion = async (taskId) => {
     const userId = auth.currentUser?.uid;
     if (!userId) return;
@@ -961,11 +975,19 @@ const TasksScreen = ({ navigation }) => {
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                          style={styles.editButtonContainer} 
-                          onPress={() => openEditBottomSheet(task.id)} // Open edit bottom sheet
+                          style={styles.editButtonContainer}
+                          onPress={() => {
+                            if (task.recurrenceID) {
+                              setSelectedRecurrence(task); // Set the selected recurrence task
+                              openEditRecurrenceBottomSheet(); // Open the recurrence edit bottom sheet
+                            } else {
+                              openEditBottomSheet(task.id); // Open the regular edit bottom sheet
+                            }
+                          }}
                         >
                           <Text style={styles.editButtonText}>Edit</Text>
                         </TouchableOpacity>
+
                       </View>
                     ))}
                   </View>
@@ -1016,18 +1038,35 @@ const TasksScreen = ({ navigation }) => {
               tasks={tasks} // Pass the current tasks state
               closeBottomSheet={closeEditBottomSheet}
               saveUpdatedTask={saveUpdatedTask} // Define this to handle saving changes
+              initializeScreen={initializeScreen} // Pass the initializeScreen function
             />
           </BottomSheetModal>
 
-          {/* Bottom Sheet for Editing Tasks */}
+          {/* Bottom Sheet for Recurrence List */}
           <BottomSheetModal
             ref={recurrenceBottomSheetRef}
             snapPoints={['75%']}
             backgroundStyle={{ backgroundColor: Colors.background }}
-            onDismiss={closeEditBottomSheet}
+            onDismiss={closeRecurrenceBottomSheet}
           >
-            <EditRecurrence
+            <RecurrenceList
               closeBottomSheet={closeRecurrenceBottomSheet}
+              openEditRecurrenceBottomSheet={openEditRecurrenceBottomSheet}
+              setSelectedRecurrence={setSelectedRecurrence}
+            />
+          </BottomSheetModal>
+
+          {/* Bottom Sheet for Editing Recurrent Tasks */}
+          <BottomSheetModal
+            ref={editRecurrenceBottomSheetRef}
+            snapPoints={['75%']}
+            backgroundStyle={{ backgroundColor: Colors.background }}
+            onDismiss={closeEditRecurrenceBottomSheet}
+          >
+            <EditTaskRecurrence
+              recurrence={selectedRecurrence}
+              closeBottomSheet={closeEditRecurrenceBottomSheet}
+              initializeScreen={initializeScreen}
             />
           </BottomSheetModal>
 
