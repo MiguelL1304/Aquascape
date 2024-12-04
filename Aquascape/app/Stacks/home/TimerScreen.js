@@ -554,9 +554,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 40,
-    left: 20,
+    top: 20,
+    left: 10,
     padding: 10,
+    zIndex: 10,
   },
   backButtonText: {
     fontSize: 18,
@@ -570,6 +571,7 @@ const styles = StyleSheet.create({
   },
   backContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 30,
   },
   fisherman: {
