@@ -16,7 +16,11 @@ const ProfileScreen = ({ navigation }) => {
   const [userInfo, setUserInfo] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [profilePic, setProfilePic] = useState(defaultProfilePic);
+  const [status, setStatus] = useState(null);
   const [fishCount, setFishCount] = useState(0);
+  const [badges, setBadges] = useState([]);
+  const [badgeDetailsVisible, setBadgeDetailsVisible] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState(null);
 
   const availableImages = [
     require('../../assets/profilePics/crabProfile.png'),
@@ -25,6 +29,21 @@ const ProfileScreen = ({ navigation }) => {
     require('../../assets/profilePics/squidProfile.png'),
     require('../../assets/profilePics/starfishProfile.png'),
   ];
+
+  const availableBadges = [
+        { title: "Lotus", description: "Complete 5 leisure tasks in a year", image: require("../../assets/lotus.png") },
+        { title: "Conch", description: "Complete 5 personal tasks in a year", image: require("../../assets/Conch.png") },
+        { title: "Starfish", description: "Complete 5 total tasks in a month", image: require("../../assets/starfish.png") },
+        { title: "Coral", description: "Log 5 hours in a month", image: require("../../assets/coral.png") },
+        { title: "Wave", description: "Complete 25 total tasks in a year", image: require("../../assets/wave.png") },
+        { title: "Majesty", description: "Log 24 hours in a year", image: require("../../assets/prettyFish.png") },
+        { title: "Power Crab", description: "Complete 3 fitness tasks in a month", image: require("../../assets/crab.png")},
+        { title: "Gym Shark", description: "Complete 10 fitness tasks in a year", image: require("../../assets/workoutShark.png") },
+        { title: "Nerd Fish", description: "Complete 5 study tasks in a month", image: require("../../assets/studyFish.png") },
+        { title: "Book Fish", description: "Complete 15 study tasks in a year", image: require("../../assets/readFish.png") },
+        { title: "Worker Whale", description: "Complete 3 work tasks in a month", image: require("../../assets/workingWhale.png") },
+        { title: "Business Turtle", description: "Complete 8 work tasks in a year", image: require("../../assets/businessTurtle.png") },
+    ];
 
   const formattedCreatedAt = userInfo?.createdAt 
     ? userInfo.createdAt.toLocaleDateString("en-US", {
@@ -42,15 +61,21 @@ const ProfileScreen = ({ navigation }) => {
           const uid = user.uid;
           const userDocRef = doc(firestoreDB, "profile", uid);
           const aquariumRef = doc(firestoreDB, "profile", uid, "aquarium", "data");
+          const badgeRef = doc(firestoreDB, "profile", uid, "badges", "badgeData");
           try {
             const userSnap = await getDoc(userDocRef);
             const aquariumSnap = await getDoc(aquariumRef);
+            const badgeSnap = await getDoc(badgeRef);
 
             if (userSnap.exists()) {
               const userData = userSnap.data();
               // Convert Firestore Timestamp to JS Date
               if (userData.createdAt) {
                 userData.createdAt = userData.createdAt.toDate();
+              }
+              // Set the status of user
+              if (userData.status) {
+                setStatus(userData.status);
               }
               // Only update if seashells count has changed
               if (!userInfo || userInfo.seashells !== userData.seashells) {
@@ -67,6 +92,13 @@ const ProfileScreen = ({ navigation }) => {
               const aquariumData = aquariumSnap.data();
               const fish = aquariumData.fish || [];
               setFishCount(fish.length);
+            }
+
+            // Show user's earned badges
+            if (badgeSnap.exists()) {
+              const badgeData = badgeSnap.data();
+              const earnedBadges = badgeData.earnedBadges || [];
+              setBadges(earnedBadges);
             }
           } catch (error) {
             console.error("Error fetching user data: ", error);
@@ -94,7 +126,7 @@ const ProfileScreen = ({ navigation }) => {
 
         // Update the profile picture in Firestore
         await updateDoc(userDocRef, {
-          profilePic: image, // Save the image as a reference (e.g., file path or URL)
+          profilePic: image, 
         });
 
         setProfilePic(image);
@@ -103,6 +135,11 @@ const ProfileScreen = ({ navigation }) => {
     } catch (error) {
       console.error("Error updating profile picture: ", error);
     }
+  };
+
+  const handleBadgePress = (badge) => {
+    setSelectedBadge(badge);
+    setBadgeDetailsVisible(true);
   };
 
   if (!userInfo) {
@@ -123,7 +160,7 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.profilePictureContainer}>
           <TouchableOpacity onPress={() => setModalVisible(true)}>
           <Image
-            source={profilePic} // Replace with dynamic profile pic if available
+            source={profilePic} 
             style={styles.profilePicture}
           />
           </TouchableOpacity>
@@ -132,6 +169,7 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.profileName}>{firstName}</Text>
           <Text style={styles.profileEmail}>{email}</Text>
           <Text style={styles.createdAtLabel}>User since: {formattedCreatedAt}</Text>
+          {status && <Text style={styles.statusLabel}>Status: {status}</Text>}
         </View>
 
         {/* Seashells */}
@@ -158,8 +196,51 @@ const ProfileScreen = ({ navigation }) => {
           {aquarium?.achievements?.length === 0 && (
             <Text style={styles.noAchievements}>No achievements unlocked yet.</Text>
           )}
+
+        {/* Display Badges */}
+          <View style={styles.badgesContainer}>
+            {badges.map((badgeTitle, index) => {
+              // Find the badge in availableBadges array
+              const badge = availableBadges.find((item) => item.title === badgeTitle);
+
+              if (badge) {
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => handleBadgePress(badge)}
+                    style={styles.badgeItem}
+                    >
+                    <Image source={badge.image} style={styles.badgeImage} />
+                    <Text style={styles.badgeTitle}>{badge.title}</Text>
+                  </TouchableOpacity>
+                );
+              }
+
+            return null;
+          })}
+          </View>
+          </View>
         </View>
-      </View>
+
+        <Modal visible={badgeDetailsVisible} animationType="fade" transparent={true}>
+          <View style={styles.badgeModalContainer}>
+            <View style={styles.badgeModalContent}>
+              {selectedBadge && (
+                <>
+                  <Text style={styles.badgeModalTitle}>{selectedBadge.title}</Text>
+                  <Text style={styles.badgeModalDescription}>{selectedBadge.description}</Text>
+                  <Image source={selectedBadge.image} style={styles.badgeModalImage} />
+                </>
+              )}
+              <TouchableOpacity
+                style={[Elements.secondaryButton, styles.closeButton]}
+                onPress={() => setBadgeDetailsVisible(false)}
+              >
+                <Text style={Elements.secondaryButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
       {/* Buttons */}
       <View style={styles.buttonContainer}>
@@ -243,6 +324,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.primary,
   },
+  statusLabel: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: Colors.primary,
+    marginTop: 5,
+  },
   infoContainer: {
     width: "100%",
     flexDirection: "row",
@@ -302,7 +389,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   profilePictureContainer: {
-    position: "relative", // Enable positioning for child elements
+    position: "relative", 
   },
   profilePicture: {
     width: 120,
@@ -316,7 +403,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 10,
     right: 10,
-    backgroundColor: Colors.background, // Optional: Add background for better visibility
+    backgroundColor: Colors.background, 
     borderRadius: 15,
     padding: 2,
     borderWidth: 1.5,
@@ -347,5 +434,67 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     marginBottom: 100,
+  },
+  badgesContainer: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  marginTop: 10,
+  justifyContent: "space-evenly",
+  },
+  badgeItem: {
+    alignItems: "center",
+    margin: 5,
+  },
+  badgeImage: {
+    width: 80,
+    height: 80,
+    margin: 5,
+    borderRadius: 25, 
+    borderWidth: 2,
+    resizeMode: "contain",
+    borderColor: Colors.primary,
+  },
+  badgeTitle: {
+    fontSize: 12,
+    color: Colors.primary,
+    textAlign: "center",
+  },
+  badgeModalContainer: {
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  badgeModalContent: {
+    width: "80%",
+    backgroundColor: "white",
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  badgeModalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: Colors.primary,
+  },
+  badgeModalDescription: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 10,
+    color: Colors.textSecondary,
+  },
+  badgeModalImage: {
+    width: 100,
+    height: 100,
+    marginBottom: 20,
+  },
+  closeButton: {
+    marginTop: 10,
   },
 });
