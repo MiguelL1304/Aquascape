@@ -2,27 +2,28 @@ import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, FlatList, Image, Modal, TouchableOpacity, Alert } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { auth, firestoreDB } from "../../firebase/firebase";
-import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, getDoc, updateDoc, arrayUnion, onSnapshot } from "firebase/firestore";
 
 const StoreScreen = ({ navigation }) => {
   const [items, setItems] = useState([
-    { id: "1", name: "Shark", image: require("../../assets/fish/Shark.gif"), price: 100, fileName: "Shark.gif", rarity: "common", unlocked: true },
-    { id: "2", name: "Clownfish", image: require("../../assets/fish/Clownfish.gif"), price: 100, fileName: "Clownfish.gif", rarity: "common", unlocked: true },
+    { id: "1", name: "Blobfish", image: require("../../assets/fish/Blobfish.gif"), price: 100, fileName: "Blobfish.gif", rarity: "common", unlocked: true },
+    { id: "2", name: "Happyfish", image: require("../../assets/fish/Happyfish.gif"), price: 100, fileName: "Happyfish.gif", rarity: "common", unlocked: true },
     { id: "3", name: "Pufferfish", image: require("../../assets/fish/Pufferfish.gif"), price: 100, fileName: "Pufferfish.gif", rarity: "common", unlocked: true },
-    { id: "4", name: "Blue Tang", image: require("../../assets/fish/Bluetang.gif"), price: 100, fileName: "Bluetang.gif", rarity: "common", unlocked: true },
-    { id: "5", name: "Cat Fish", image: require("../../assets/fish/Catfish.gif"), price: 100, fileName: "Catfish.gif", rarity: "rare", unlocked: true },
-    { id: "6", name: "Goldfish", image: require("../../assets/fish/Goldfish.gif"), price: 100, fileName: "Goldfish.gif", rarity: "common", unlocked: true },
-    { id: "7", name: "Blobfish", image: require("../../assets/fish/Blobfish.gif"), price: 100, fileName: "Blobfish.gif", rarity: "common", unlocked: true },
-    { id: "8", name: "Happyfish", image: require("../../assets/fish/Happyfish.gif"), price: 100, fileName: "Happyfish.gif", rarity: "common", unlocked: true },
-    { id: '9', name: '', image: require("../../assets/cat.gif"), price: '100', unlocked: false,requirement: { type: 'productivity', hours: 10 } },
-    { id: '10', name: '', image: require("../../assets/cat.gif"), price: '100', unlocked: false, requirement: { type: 'productivity', hours: 24 } },
+    { id: "4", name: "Shark", image: require("../../assets/fish/Shark.gif"), price: 100, fileName: "Shark.gif", rarity: "common", unlocked: true },
+    { id: '5', name: 'test', image: require("../../assets/cat.gif"), price: '100', unlocked: true,requirement: { type: 'productivity', hours: 10 } },
+    { id: '6', name: 'tester fishy', image: require("../../assets/cat.gif"), price: '100', unlocked: true, requirement: { type: 'productivity', hours: 24 } },
+    { id: "7", name: "Blue Tang", image: require("../../assets/fish/Bluetang.gif"), price: 100, fileName: "Bluetang.gif", rarity: "common", unlocked: false, requiredBadge: 'Book Fish' },
+    { id: "8", name: "Cat Fish", image: require("../../assets/fish/Catfish.gif"), price: 100, fileName: "Catfish.gif", rarity: "rare", unlocked: false, requiredBadge: 'Majesty' },
+    { id: "9", name: "Goldfish", image: require("../../assets/fish/Goldfish.gif"), price: 100, fileName: "Goldfish.gif", rarity: "common", unlocked: false,requiredBadge: 'Wave' },
+    { id: "10", name: "Clownfish", image: require("../../assets/fish/Clownfish.gif"), price: 100, fileName: "Clownfish.gif", rarity: "common", unlocked: false, requiredBadge: 'Gym Shark' },
+
   ]);
 
   const [backgroundItems, setBackgroundItems] = useState([
     { id: "11", name: "Desert", image: require("../../assets/backgrounds/desert-bg.png"), price: 200, unlocked: true },
-    { id: "12", name: "Futuristic City", image: require("../../assets/backgrounds/futuristic-city-bg.png"), price: 300, unlocked: false },
-    { id: "13", name: "Jungle", image: require("../../assets/backgrounds/jungle-bg.png"), price: 250, unlocked: false },
-    { id: "14", name: "Space", image: require("../../assets/backgrounds/space-bg.png"), price: 350, unlocked: false },
+    { id: "12", name: "Futuristic City", image: require("../../assets/backgrounds/futuristic-city-bg.png"), price: 300, unlocked: true },
+    { id: "13", name: "Jungle", image: require("../../assets/backgrounds/jungle-bg.png"), price: 250, unlocked: true },
+    { id: "14", name: "Space", image: require("../../assets/backgrounds/space-bg.png"), price: 350, unlocked: true },
   ]);
 
   const [selectedCategory, setSelectedCategory] = useState("Fish");
@@ -35,51 +36,91 @@ const StoreScreen = ({ navigation }) => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [userFishCounts, setUserFishCounts] = useState({});
+  const [earnedBadges, setEarnedBadges] = useState([]);
 
   const [userProgress, setUserProgress] = useState({});
 
-  // DELETE THIS LATER
   useEffect(() => {
     const fetchUserProgress = async () => {
-        try {
-            const userId = auth.currentUser?.uid;
-            if (!userId) {
-                console.error('User is not authenticated');
-                return;
-            }
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
+        console.error('User is not authenticated');
+        return;
+      }
 
-            const progressDocRef = doc(firestoreDB, 'profile', userId, 'badges', 'badgeData');
-            const progressDoc = await getDoc(progressDocRef);
+      const progressDocRef = doc(firestoreDB, 'profile', userId, 'badges', 'badgeData');
+      const progressDoc = await getDoc(progressDocRef);
 
-            if (progressDoc.exists()) {
-                const data = progressDoc.data();
-                console.log('Fetched user progress:', data);
-                setUserProgress(data);
-            } else {
-                console.log('No progress data found in Firestore.');
-            }
-        } catch (error) {
-            console.error('Error fetching user progress:', error);
-        }
+      if (progressDoc.exists()) {
+        const data = progressDoc.data();
+        setEarnedBadges(data.earnedBadges || []); // Update earnedBadges from Firestore
+        console.log('Fetched user progress:', data);
+      } else {
+        console.log('No progress data found in Firestore.');
+      }
     };
 
     fetchUserProgress();
-}, []);
+  }, []);
 
 useEffect(() => {
-  const updatedItems = items.map((item) => {
-    if (
-      item.requirement?.type === "productivity" &&
-      userProgress.totalMinutes >= item.requirement.hours * 60
-    ) {
+  const fetchBadges = async () => {
+    const userId = auth.currentUser?.uid;
+    if (!userId) {
+      console.error('User is not authenticated');
+      return;
+    }
+
+    const badgeDocRef = doc(firestoreDB, 'profile', userId, 'badges', 'badgeData');
+    const badgeDoc = await getDoc(badgeDocRef);
+    
+    if (badgeDoc.exists()) {
+      const data = badgeDoc.data();
+      setEarnedBadges(data.earnedBadges || []);
+    } else {
+      console.log('No badge data found in Firestore.');
+    }
+  };
+
+  fetchBadges();
+}, []);
+
+
+useEffect(() => {
+  const userId = auth.currentUser?.uid;
+  if (!userId) {
+      console.error('User is not authenticated');
+      return;
+  }
+
+  const badgeDocRef = doc(firestoreDB, 'profile', userId, 'badges', 'badgeData');
+  const unsubscribe = onSnapshot(badgeDocRef, (doc) => {
+      if (doc.exists()) {
+          const data = doc.data();
+          setEarnedBadges(data.earnedBadges || []);
+          console.log('Fetched user progress:', data);
+      } else {
+          console.log('No badge data found in Firestore.');
+      }
+  }, (error) => {
+      console.error("Error fetching badge data:", error);
+  });
+
+  return () => unsubscribe();  // Detach listener when the component unmounts
+}, []);
+
+
+useEffect(() => {
+  const updatedItems = items.map(item => {
+    if (item.requiredBadge && earnedBadges.includes(item.requiredBadge)) {
       return { ...item, unlocked: true };
     }
     return item;
   });
 
-  // console.log("Updated Items:", updatedItems); // Debug to verify `unlocked` state
-  setItems(updatedItems); // Update state with unlocked items
-}, [userProgress]);
+  setItems(updatedItems);
+}, [earnedBadges]);
+
 
 
   // Fetch seashells and user fish
@@ -121,15 +162,16 @@ useEffect(() => {
 
   const handlePress = (item) => {
     if (!item.unlocked) {
-      const requirementMessage = item.requirement?.type === 'productivity'
-          ? `You need ${item.requirement.hours} hours of productivity to unlock this item.`
-          : 'This item is locked.';
+      const requirementMessage = item.requiredBadge
+        ? `You need the ${item.requiredBadge} badge to unlock this item.`
+        : 'This item is locked.';
       Alert.alert('Locked Item', requirementMessage);
       return;
-  }
+    }
     setSelectedItem(item);
     setIsModalVisible(true); // Open modal on item press
   };
+  
 
   const closeModal = () => {
     setIsModalVisible(false); // Close modal

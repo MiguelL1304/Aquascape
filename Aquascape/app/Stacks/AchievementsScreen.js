@@ -29,8 +29,8 @@ const AchievementsScreen = () => {
     const monthYearFormat = `${currentYear}-${currentMonth < 10 ? `0${currentMonth}` : currentMonth}`;
 
     const badges = [
-        { title: "Lotus", description: "Earn 500 seashells", image: require("../../assets/lotus.png") },
-        { title: "Conch", description: "Complete 5 personal tasks", image: conch },
+        { title: "Lotus", description: "Complete 5 leisure tasks in a year", image: require("../../assets/lotus.png") },
+        { title: "Conch", description: "Complete 5 personal tasks in a year", image: conch },
         { title: "Starfish", description: "Complete 5 total tasks in a month", image: starfish },
         { title: "Coral", description: "Log 5 hours in a month", image: coral },
         { title: "Wave", description: "Complete 25 total tasks in a year", image: wave },
@@ -41,7 +41,9 @@ const AchievementsScreen = () => {
         { title: "Book Fish", description: "Complete 15 study tasks in a year", image: require("../../assets/readFish.png") },
         { title: "Worker Whale", description: "Complete 3 work tasks in a month", image: require("../../assets/workingWhale.png") },
         { title: "Business Turtle", description: "Complete 8 work tasks in a year", image: require("../../assets/businessTurtle.png") },
-        { title: "test", description: "earn 1 shell", image: require("../../assets/cat.gif")}
+        // { title: "test", description: "earn 1 shell", image: require("../../assets/cat.gif")},
+        // { title: "tester", description: "earn 501 shell", image: require("../../assets/cat.gif")}
+
     ];
 
     useEffect(() => {
@@ -85,7 +87,17 @@ const AchievementsScreen = () => {
 
         const unsubscribeUserProfile = onSnapshot(userProfileRef, (docSnap) => {
             if (docSnap.exists()) {
-                setUserData(docSnap.data());
+                const data = docSnap.data();
+                // Ensure that all expected fields are initialized correctly.
+                const defaultUserData = {
+                    seashells: 0, // Default value for seashells
+                    ...data // Spread the existing data from Firestore
+                };
+                setUserData(defaultUserData);
+            } else {
+                console.log("User profile not found.");
+                // Optionally set default user data if the document does not exist.
+                setUserData({ seashells: 0 });
             }
         });
 
@@ -108,13 +120,9 @@ const AchievementsScreen = () => {
         const newShownAlerts = [...shownAlerts];
 
         // Badge conditions
-        //test 
-        if (userData.seashells >= 1 && !newBadges.includes("test")) {
-            newBadges.push("test");
-            newlyUnlocked.push("test");
-        }
-        // lotus --> earn xx shells
-        if (userData.seashells >= 500 && !newBadges.includes("Lotus")) {
+
+        // lotus
+        if (yearlyStats.categoryBreakdown?.Leisure >= 5 && !newBadges.includes("Lotus")) {
             newBadges.push("Lotus");
             newlyUnlocked.push("Lotus");
         }
@@ -249,6 +257,7 @@ const AchievementsScreen = () => {
     const closeModal = () => {
         setModalVisible(false);
     };
+
 
 
     return (
