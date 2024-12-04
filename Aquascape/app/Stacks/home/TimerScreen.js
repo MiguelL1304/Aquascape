@@ -4,6 +4,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert, Moda
 import { Circle } from 'react-native-progress';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/Ionicons';
+import useStats from '../stats/useStats';
 
 import shell from '../../../assets/shell.png';
 import fisherman from '../../../assets/Fisherman.gif';
@@ -24,6 +25,7 @@ const TimerScreen = ({ route }) => {
   const [duration, setDuration] = useState(taskDuration || 0);
   const [selectedCategory, setSelectedCategory] = useState(taskCategory || 'Other');
   const [customTime, setCustomTime] = useState(taskDuration ? String(taskDuration):'0');
+  const { updateTimeLogged, fetchDailyStats } = useStats();
 
   // STATE VARIABLES FOR EVERYTHING ELSE
   const [secondsLeft, setSecondsLeft] = useState(1500);
@@ -32,6 +34,7 @@ const TimerScreen = ({ route }) => {
   const [totalTimeInSeconds, setTotalTimeInSeconds] = useState(1500);
   const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [isCategoryPickerVisible, setIsCategoryPickerVisible] = useState(false);
+  const [dailyStats, setDailyStats] = useState(null);
   
   const categories = ['Work', 'Personal', 'Fitness', 'Study', 'Leisure', 'Other'];
 
@@ -93,6 +96,16 @@ const TimerScreen = ({ route }) => {
       if (unsubscribe) unsubscribe(); 
     };
   }, [isActive, secondsLeft]);
+
+  useEffect(() => {
+    // Fetch daily stats when TimerScreen loads
+    const loadDailyStats = async () => {
+      const stats = await fetchDailyStats();
+      setDailyStats(stats); // Update local state with fetched stats
+    };
+
+    loadDailyStats();
+  }, []);
 
     // Determine Button Text
   const timerButtonText = (() => {
@@ -279,15 +292,26 @@ const handleTimerComplete = async (earnedShells) => {
       // Update achievements based on totalMinutes
       await updateAchievements(badgeTotalMinutes);
 
-      // Update stats using the useStats hook
       if (task) {
-        await updateStats(task, fromTasks);
+        const taskData = {
+          category: taskCategory,
+          duration: parseInt(customTime, 10),
+          date: new Date().toISOString().split("T")[0],
+        };
+        await updateTimeLogged(taskData, "add");
       }
 
-      // Marks task as complete if fromTasks is true
-      if (fromTasks && task) {
-        await markTaskAsComplete(task);
-      }
+      const updatedStats = await fetchDailyStats();
+      setDailyStats(updatedStats);
+      // Update stats using the useStats hook
+      // if (task) {
+      //   await updateStats(task, fromTasks);
+      // }
+
+      // // Marks task as complete if fromTasks is true
+      // if (fromTasks && task) {
+      //   await markTaskAsComplete(task);
+      // }
 
     } catch (error) {
       console.error('Error in handleTimerComplete:', error);
