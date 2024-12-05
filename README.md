@@ -31,6 +31,8 @@ Make sure you have the following installed:
 1. **Clone the repository**:
    ```
    git clone git@github.com:MiguelL1304/Aquascape.git
+   cd Aquascape
+   cd Aquascape
    ```
 2. **Install dependencies:***
    ```
